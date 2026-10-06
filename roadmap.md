@@ -1,0 +1,15 @@
+# Tasks
+- [x] Rename Rapor Yaz to İlerleme and add staged quantity changes with a floating save control.
+- [x] Add direct station/zone selection and verify saved quantities, navigation and layout.
+- [x] Add persistent appearance selection and instantly switch between sidebar and bottom navigation.
+- [x] Verify both layouts, navigation, reload persistence and content clearance on mobile and desktop.
+- [x] Replace header settings popup with a dedicated settings page and shared live project/company settings.
+- [x] Verify live header updates, reload persistence and navigation.
+- [x] Apply Özgün İnşaat enterprise styling and collapsible navigation, preserving all workflows.
+- [x] Add locally saved project settings and branded fixed header.
+- [x] Verify project settings persistence, navigation, dark mode and small-screen layouts.
+- [x] Separate Dashboard and Rapor Yaz with shared in-memory data and bottom navigation.
+- [x] Implement four-step report flow and four editable table cards.
+- [x] Verify navigation, updates, dark mode and mobile layout.
+- [x] Add per-item fault form with photo, location, survey coordinates, status and team.
+- [x] Persist fault records and photos locally and verify reload, indicators and mobile form.
