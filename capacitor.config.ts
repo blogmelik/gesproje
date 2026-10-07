@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.gesproje.app',
-  appName: 'gesproje',
+  appName: "Özgün GES Saha Takip",
   webDir: 'dist'
 };
 

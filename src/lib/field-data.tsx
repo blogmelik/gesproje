@@ -173,7 +173,7 @@ export function FieldDataProvider({ children }: { children: ReactNode }) {
   function importData(updates: Data) {
     setData(previous => ({ ...previous, ...updates }));
   }
-  return <FieldContext.Provider value={{ data, draftData, pendingCount, stageItem, saveChanges, overall, stationPct, completeTables, setItem, importData }}>{children}</FieldContext.Provider>;
+  return <FieldContext.Provider value={{ data, draftData, pendingCount, stageItem, saveChanges, overall, stationPct, completeTables, setItem, importData, locks: locks || {}, toggleLock }}>{children}</FieldContext.Provider>;
 }
 
 export function useFieldData() {

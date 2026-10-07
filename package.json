@@ -112,7 +112,7 @@
   "main": "electron/main.cjs",
   "build": {
     "appId": "com.ozguninsaat.saha",
-    "productName": "Saha Takip",
+    "productName": "Özgün GES Saha Takip",
     "directories": {
       "output": "dist-electron"
     },

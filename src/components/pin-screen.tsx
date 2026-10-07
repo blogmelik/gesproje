@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
 export function PinScreen({ children }: { children: React.ReactNode }) {
-  const [unlocked, setUnlocked] = useState(false);
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem("ges-unlocked") === "true");
   const [pin, setPin] = useState("");
   const [expectedPin, setExpectedPin] = useState<string | null>(null);
 
@@ -32,6 +32,7 @@ export function PinScreen({ children }: { children: React.ReactNode }) {
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
     if (pin === expectedPin) {
+      sessionStorage.setItem("ges-unlocked", "true");
       setUnlocked(true);
     } else {
       toast.error("Hatalı PIN kodu!");

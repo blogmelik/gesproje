@@ -94,9 +94,30 @@ function RevisionPage() {
       sheet["!autofilter"] = { ref: `A1:N${data.length + 1}` };
       const book = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(book, sheet, t("Hata Raporu").slice(0, 31));
-      XLSX.writeFile(book, "saha_hata_raporu.xlsx");
-      toast.success(t("Excel indirildi"), { description: t("saha_hata_raporu.xlsx — {n} kayıt aktarıldı.", { n: rows.length }) });
-    } catch { toast.error(t("Excel oluşturulamadı"), { description: t("Lütfen tekrar deneyin.") }); }
+        
+        // Mobile-friendly download via Web Share API
+        try {
+          const wbout = XLSX.write(book, { bookType: 'xlsx', type: 'array' });
+          const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          const file = new File([blob], "saha_hata_raporu.xlsx", { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: "Saha Hata Raporu",
+              text: "Saha Hata Raporu ektedir."
+            });
+            toast.success(t("Rapor paylaşıldı"), { description: t("{n} kayıt aktarıldı.", { n: rows.length }) });
+            return;
+          }
+        } catch (shareErr) {
+          console.error("Share failed", shareErr);
+        }
+        
+        // Fallback for Desktop
+        XLSX.writeFile(book, "saha_hata_raporu.xlsx");
+        toast.success(t("Excel indirildi"), { description: t("saha_hata_raporu.xlsx — {n} kayıt aktarıldı.", { n: rows.length }) });
+      } catch (err) { console.error(err); toast.error(t("Excel oluşturulamadı"), { description: t("Lütfen tekrar deneyin.") }); }
   }
 
   const filter = (label: string, value: string, onChange: (v: string) => void, options: [string, string][]) =>
