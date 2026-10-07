@@ -10,6 +10,7 @@ import { useEffect } from "react";
 
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { FieldShell } from "@/components/field-shell";
+import { PinScreen } from "@/components/pin-screen";
 import { Toaster } from "@/components/ui/sonner";
 import { registerSW } from "@/lib/register-sw";
 
@@ -87,7 +88,9 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <FieldShell><Outlet /></FieldShell>
+      <PinScreen>
+          <FieldShell><Outlet /></FieldShell>
+        </PinScreen>
       <Toaster position="top-center" richColors />
     </QueryClientProvider>
   );

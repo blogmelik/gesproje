@@ -1,6 +1,7 @@
 import ozgunLogo from "@/assets/ozgun-logo-text.png";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import CryptoJS from "crypto-js";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { LayoutDashboard, ClipboardPen, ListChecks, Moon, Sun, PanelLeftClose, PanelLeftOpen, Menu, Settings, HardHat, CloudSun, Wind, CloudCheck, CloudUpload } from "lucide-react";
@@ -103,6 +104,14 @@ function HeaderIndicators() {
       if (error) throw error;
       
       if (data && data.value) {
+        // Decrypt payload
+        try {
+          if (typeof data.value === 'string' && data.value.startsWith('U2FsdGVk')) {
+            const bytes = CryptoJS.AES.decrypt(data.value, "OzgunInsaat2026SahaTakip$!");
+            data.value = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+          }
+        } catch(e) { console.error("Decryption failed", e); }
+
         if (!isElectron) {
           // Mobil uygulama SADECE kilitleri indirir (cunku sahadaki veriler ezelden beridir mobilin kendisindedir, offline veri kaybolmasin diye progress indirilmez)
           if (data.value.locked) localStorage.setItem("ges-locked-v1", data.value.locked);
@@ -150,11 +159,15 @@ function HeaderIndicators() {
       if (syncStatus === 'downloading') return;
       setSyncStatus('syncing');
       try {
+        
+        // Encrypt payload
+        const encryptedPayload = CryptoJS.AES.encrypt(payloadStr, "OzgunInsaat2026SahaTakip$!").toString();
+
         const { error } = await supabase
           .from('sync_store')
           .upsert({ 
             key: 'device-demo', 
-            value: JSON.parse(payloadStr),
+            value: encryptedPayload, // Save as encrypted string instead of JSON object
             updated_at: new Date().toISOString()
           });
 
