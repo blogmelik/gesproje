@@ -124,5 +124,8 @@
       "target": "nsis",
       "icon": "public/favicon.png"
     }
-  }
+  },
+  "version": "1.0.0",
+  "author": "Ozgun Insaat",
+  "description": "Saha Takip Uygulamasi"
 }
