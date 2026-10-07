@@ -11,7 +11,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:electron": "npm run build && electron-builder --win",
+    "dev:electron": "cross-env NODE_ENV=development concurrently \"npm run dev\" \"wait-on http://localhost:8080 && electron .\""
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -85,6 +87,10 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "concurrently": "^10.0.5",
+    "cross-env": "^10.1.0",
+    "electron": "^44.6.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
@@ -98,6 +104,23 @@
     "typescript-eslint": "^8.56.1",
     "vite": "8.1.5",
     "vite-plugin-pwa": "^2.0.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wait-on": "^9.5.1"
+  },
+  "main": "electron/main.cjs",
+  "build": {
+    "appId": "com.ozguninsaat.saha",
+    "productName": "Saha Takip",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "public/favicon.png"
+    }
   }
 }
