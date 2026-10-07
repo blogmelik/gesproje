@@ -122,7 +122,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/favicon.png"
+      "icon": "public/icon-512.png"
     }
   },
   "version": "1.0.0",
