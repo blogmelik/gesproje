@@ -56,6 +56,8 @@ type FieldContextValue = {
   pendingCount: number;
   stageItem: (key: string, index: number, value: number) => void;
   saveChanges: () => void;
+  locks: Record<string, boolean>;
+  toggleLock: (key: string) => void;
   overall: ReturnType<typeof sumRange>;
   stationPct: number[];
   completeTables: number;
@@ -100,10 +102,15 @@ function sparse(data: Data) {
 export function FieldDataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<Data>(seedData);
   const [pending, setPending] = useState<Data>({});
+    const [locks, setLocks] = useState<Record<string, boolean>>({});
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     try {
       const stored = parseStoredProgress(localStorage.getItem(PROGRESS_STORAGE_KEY));
+        try {
+          const storedLocks = JSON.parse(localStorage.getItem("ges-locked-v1") || "{}");
+          setLocks(storedLocks);
+        } catch { /* ignore */ }
       setData(previous => ({ ...previous, ...stored.committed }));
       setPending(stored.pending);
     } catch { /* storage unavailable */ }
@@ -114,7 +121,22 @@ export function FieldDataProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify({ committed: sparse(data), pending })); }
     catch { /* storage full or unavailable */ }
   }, [data, pending, loaded]);
-  const draftData = useMemo(() => ({ ...data, ...pending }), [data, pending]);
+  useEffect(() => {
+      if (!loaded) return;
+      try { localStorage.setItem("ges-locked-v1", JSON.stringify(locks)); }
+      catch { /* storage full */ }
+    }, [locks, loaded]);
+    
+    const toggleLock = (key: string) => {
+      setLocks(prev => {
+        const next = { ...prev };
+        if (next[key]) delete next[key];
+        else next[key] = true;
+        return next;
+      });
+    };
+
+    const draftData = useMemo(() => ({ ...data, ...pending }), [data, pending]);
   const pendingCount = Object.keys(pending).length;
   function stageItem(key: string, index: number, value: number) {
     const item = ITEMS[index];

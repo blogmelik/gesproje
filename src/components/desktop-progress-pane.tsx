@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, Folder, FolderOpen, Table2, TriangleAlert } from "lucide-react";
+import { ChevronRight, Folder, FolderOpen, Table2, Lock, Unlock, TriangleAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { FieldProgress } from "@/components/field-progress";
 import { useI18n } from "@/lib/i18n";
@@ -114,7 +114,22 @@ export function DesktopProgressPane({ data, stationPct, station, zone, row, onSe
                   const tableName = t("Masa {n}", { n: m + 1 });
                   const total = pct(values.reduce((a, b) => a + b, 0), TABLE_TOTAL);
                   return <tr key={key} className={activeTable === m ? "bg-accent/40" : ""} onFocus={() => setActiveTable(m)}>
-                    <th scope="row" className="border px-2 py-1.5 text-left font-semibold">{tableName}</th>
+                    <th scope="row" className="border px-2 py-1.5 text-left font-semibold whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          {isElectron ? (
+                            <button 
+                              onClick={() => toggleLock(key)}
+                              className={`p-1 rounded hover:bg-muted ${locks[key] ? 'text-destructive' : 'text-muted-foreground'}`}
+                              title={locks[key] ? "Kilidi Ac" : "Kilitle"}
+                            >
+                              {locks[key] ? <Lock className="size-4" /> : <Unlock className="size-4" />}
+                            </button>
+                          ) : (
+                            locks[key] && <Lock className="size-4 text-destructive" title="Kilitli" />
+                          )}
+                          <span>{tableName}</span>
+                        </div>
+                      </th>
                     {ITEMS.map((item, index) => {
                       const value = values[index] ?? 0;
                       const progress = pct(value, item.target);
@@ -122,7 +137,7 @@ export function DesktopProgressPane({ data, stationPct, station, zone, row, onSe
                       const label = `${t("İstasyon {n}", { n: station + 1 })} · ${t("Bölge {n}", { n: ZONES[zone] ?? "" })} · ${t("Sıra {n}", { n: row + 1 })} · ${tableName} · ${t(item.name)}`;
                       return <td key={item.name} className="border px-1.5 py-1 align-top">
                         <div className="flex items-center gap-1">
-                          <Input id={`dq-${id}`} aria-label={`${tableName} ${t(item.name)} ${t("miktarı")}`} type="number" inputMode="numeric" min={0} max={item.target} value={value} onFocus={e => e.currentTarget.select()} onChange={e => setItem(key, index, Number(e.target.value))} className="h-8 min-w-0 flex-1 px-1.5 text-right text-sm tabular-nums md:text-sm" />
+                          <Input id={`dq-${id}`} aria-label={`${tableName} ${t(item.name)} ${t("miktarı")}`} type="number" inputMode="numeric" min={0} max={item.target} value={value} onFocus={e => e.currentTarget.select()} onChange={e => setItem(key, index, Number(e.target.value))} disabled={locks[key]} className="h-8 min-w-0 flex-1 px-1.5 text-right text-sm tabular-nums md:text-sm disabled:opacity-50 disabled:cursor-not-allowed" />
                           <button type="button" tabIndex={-1} disabled={!faultsReady} title={t("Hata Bildir")} aria-label={`${tableName} ${t(item.name)} ${t("Hata Bildir")}`} onClick={() => onFault(id, label)} className={`grid size-7 shrink-0 place-items-center rounded-sm hover:bg-muted ${reported(id) ? "text-destructive" : "text-muted-foreground"}`}><TriangleAlert className="size-3.5" /></button>
                         </div>
                         <div className="mt-1 flex items-center gap-1.5"><div className="flex-1"><FieldProgress value={progress} height="h-1" label={`${tableName} ${t(item.name)} ${t("ilerleme")}`} /></div><span className={`w-9 text-right text-[11px] tabular-nums ${textTone(progress)}`}>%{progress}</span></div>

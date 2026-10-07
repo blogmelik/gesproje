@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, ChevronRight, Minus, Plus, Check, TriangleAlert, Save } from "lucide-react";
+import { ArrowLeft, ChevronRight, Minus, Plus, Lock, Check, TriangleAlert, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppearanceSettings } from "@/lib/appearance-settings";
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/rapor-yaz")({
 });
 
 function ReportPage() {
-  const { draftData: data, stationPct, stageItem: setItem, pendingCount, saveChanges } = useFieldData();
+  const { draftData: data, stationPct, stageItem: setItem, pendingCount, saveChanges, locks } = useFieldData();
   const { layout } = useAppearanceSettings();
   const faults = useFaultReports();
   const { t } = useI18n();
@@ -120,12 +120,12 @@ function ReportPage() {
                   </div>
                 </div>
                 <div className="grid grid-cols-[48px_minmax(0,1fr)_48px] items-center gap-2">
-                  <Button variant="outline" size="icon" disabled={value === 0} onClick={() => setItem(key, index, value - 1)} aria-label={`${tableName} ${t(item.name)} ${t("azalt")}`} className="h-12 w-12 border [&_svg]:size-6"><Minus /></Button>
+                  <Button variant="outline" size="icon" disabled={value === 0 || locks[key]} onClick={() => setItem(key, index, value - 1)} aria-label={`${tableName} ${t(item.name)} ${t("azalt")}`} className="h-12 w-12 border [&_svg]:size-6"><Minus /></Button>
                   <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                    <Input id={inputId} aria-label={`${tableName} ${t(item.name)} ${t("miktarı")}`} type="number" inputMode="numeric" min={0} max={item.target} step={1} value={value} onChange={event => setItem(key, index, Number(event.target.value))} className="h-12 min-w-0 border bg-background px-1 text-center font-display text-2xl font-semibold md:text-2xl" />
+                    <Input id={inputId} aria-label={`${tableName} ${t(item.name)} ${t("miktarı")}`} type="number" inputMode="numeric" min={0} max={item.target} step={1} value={value} onChange={event => setItem(key, index, Number(event.target.value))} disabled={locks[key]} className="h-12 disabled:opacity-50 disabled:cursor-not-allowed  min-w-0 border bg-background px-1 text-center font-display text-2xl font-semibold md:text-2xl" />
                     <span className="whitespace-nowrap font-display text-xl font-semibold text-muted-foreground">/ {item.target}</span>
                   </div>
-                  <Button size="icon" disabled={value >= item.target} onClick={() => setItem(key, index, value + 1)} aria-label={`${tableName} ${t(item.name)} ${t("artır")}`} className="h-12 w-12 border border-border [&_svg]:size-6"><Plus /></Button>
+                  <Button size="icon" disabled={value >= item.target || locks[key]} onClick={() => setItem(key, index, value + 1)} aria-label={`${tableName} ${t(item.name)} ${t("artır")}`} className="h-12 w-12 border border-border [&_svg]:size-6"><Plus /></Button>
                 </div>
                 <FieldProgress value={progress} label={`${tableName} ${t(item.name)} ${t("ilerleme")}`} />
               </div>;

@@ -103,10 +103,17 @@ function HeaderIndicators() {
       if (error) throw error;
       
       if (data && data.value) {
-        if (data.value.progress) localStorage.setItem("ges-progress-v1", data.value.progress);
-        if (data.value.faults) localStorage.setItem("ges-faults", data.value.faults);
-        if (data.value.settings) localStorage.setItem("ges-settings", data.value.settings);
-        if (data.value.teams) localStorage.setItem("ges-teams", data.value.teams);
+        if (!isElectron) {
+          // Mobil uygulama SADECE kilitleri indirir (cunku sahadaki veriler ezelden beridir mobilin kendisindedir, offline veri kaybolmasin diye progress indirilmez)
+          if (data.value.locked) localStorage.setItem("ges-locked-v1", data.value.locked);
+        } else {
+          // PC uygulamasi tum verileri indirir
+          if (data.value.progress) localStorage.setItem("ges-progress-v1", data.value.progress);
+          if (data.value.locked) localStorage.setItem("ges-locked-v1", data.value.locked);
+          if (data.value.faults) localStorage.setItem("ges-faults", data.value.faults);
+          if (data.value.settings) localStorage.setItem("ges-settings", data.value.settings);
+          if (data.value.teams) localStorage.setItem("ges-teams", data.value.teams);
+        }
         
         if (!isStartup) toast.success("Veriler yenilendi!");
         setTimeout(() => window.location.reload(), isStartup ? 100 : 800);
@@ -119,8 +126,9 @@ function HeaderIndicators() {
   };
 
   useEffect(() => {
-    // Sadece Electron (Bilgisayar) uygulamasinda ve ilk acilista otomatik calisir
-    if (isElectron && !sessionStorage.getItem('startupSyncDone')) {
+    // Tum cihazlarda ilk acilista calisir.
+    // PC tum veriyi cekerken, Mobil sadece merkezden gelen 'kilitleri' ceker
+    if (!sessionStorage.getItem('startupSyncDone')) {
       sessionStorage.setItem('startupSyncDone', 'true');
       fetchCloudData(true);
     }
@@ -131,7 +139,8 @@ function HeaderIndicators() {
       progress: localStorage.getItem("ges-progress-v1"),
       faults: localStorage.getItem("ges-faults"),
       settings: localStorage.getItem("ges-settings"),
-      teams: localStorage.getItem("ges-teams")
+      teams: localStorage.getItem("ges-teams"),
+      locked: localStorage.getItem("ges-locked-v1")
     });
 
     if (payloadStr === lastSyncedHash) return;
