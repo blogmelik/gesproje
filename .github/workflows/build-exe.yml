@@ -44,7 +44,7 @@ jobs:
         git fetch origin builds || echo "Branch not found"
         git checkout builds || git checkout -b builds
         mkdir -p release
-        cp dist-electron/* Setup*.exe release/SahaTakip-Masaustu-Guncel.exe 2>/dev/null || cp dist-electron/*.exe release/SahaTakip-Masaustu-Guncel.exe || echo "Copy failed"
+        cp dist-electron/*.exe release/SahaTakip-Masaustu-Guncel.exe || echo "Copy failed"
         git add release/SahaTakip-Masaustu-Guncel.exe || echo "Nothing to add"
         git commit -m "Auto-update EXE" || echo "No changes"
         git push origin builds --force
