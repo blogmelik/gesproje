@@ -1,3 +1,4 @@
+import ozgunLogo from "@/assets/ozgun-logo-text.png";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
@@ -52,7 +53,7 @@ function FieldShellContent({ children }: { children: ReactNode }) {
             <div className="flex min-h-20 items-center gap-3 px-3 py-3 md:px-5 lg:min-h-14 lg:py-1.5">
               {!bottom && <Button variant="ghost" size="icon" className="size-10 shrink-0 md:hidden" aria-label={t("Menüyü aç")} title={t("Menüyü aç")} onClick={() => setMobileMenu(true)}><Menu /></Button>}
               <div className="flex w-24 shrink-0 items-center justify-center rounded-sm bg-brand-surface p-1.5 sm:w-40 md:w-44 lg:w-36 lg:p-1">
-                <img src="/logo.jpg" alt="Özgün İnşaat logosu" className="h-auto w-full" />
+                <img src={ozgunLogo} alt="Özgün İnşaat logosu" className="h-auto w-full" />
               </div>
               <div className="min-w-0 flex-1 border-l pl-3 sm:pl-5">
                 <h1 className="break-words text-xs font-semibold leading-snug sm:text-base">{settings.project.name}</h1>
