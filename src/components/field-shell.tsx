@@ -89,51 +89,68 @@ function FieldShellContent({ children }: { children: ReactNode }) {
 /** Desktop-only status chips: dummy site weather + local sync state. */
 function HeaderIndicators() {
   const { t } = useI18n();
-  const { pendingCount, saveChanges } = useFieldData();
-  const [isSyncing, setIsSyncing] = useState(false);
-  const synced = pendingCount === 0;
+  const { pendingCount } = useFieldData();
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error'>('idle');
+  const [lastSyncedHash, setLastSyncedHash] = useState('');
 
-  const handleSync = async () => {
-    setIsSyncing(true);
-    try {
-      saveChanges();
-      const payload = {
-        progress: localStorage.getItem("ges-progress-v1"),
-        faults: localStorage.getItem("ges-faults"),
-        settings: localStorage.getItem("ges-settings"),
-        teams: localStorage.getItem("ges-teams")
-      };
+  useEffect(() => {
+    // Sadece onaylanmis veri (pendingCount === 0) veya genel bir degisiklik oldugunda otomatik calisir
+    const payloadStr = JSON.stringify({
+      progress: localStorage.getItem("ges-progress-v1"),
+      faults: localStorage.getItem("ges-faults"),
+      settings: localStorage.getItem("ges-settings"),
+      teams: localStorage.getItem("ges-teams")
+    });
 
-      const { error } = await supabase
-        .from('sync_store')
-        .upsert({ 
-          key: 'device-demo', 
-          value: payload,
-          updated_at: new Date().toISOString()
-        });
+    if (payloadStr === lastSyncedHash) return; // Degisiklik yoksa atla
+    
+    // Draft asamasinda isek bekle (Kaydet butonuna basilinca pendingCount 0 olur)
+    if (pendingCount > 0) return;
 
-      if (error) throw error;
-      toast.success("Veriler basariyla buluta gonderildi!");
-    } catch (err) {
-      console.error("Sync error:", err);
-      toast.error("Esitleme hatasi. Internet baglantinizi kontrol edin.");
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+    const autoSync = async () => {
+      setSyncStatus('syncing');
+      try {
+        const { error } = await supabase
+          .from('sync_store')
+          .upsert({ 
+            key: 'device-demo', 
+            value: JSON.parse(payloadStr),
+            updated_at: new Date().toISOString()
+          });
+
+        if (error) throw error;
+        setSyncStatus('idle');
+        setLastSyncedHash(payloadStr); // Son gonderilen veriyi kaydet
+      } catch (err) {
+        console.error("Auto-sync error:", err);
+        setSyncStatus('error');
+      }
+    };
+
+    const timer = setTimeout(autoSync, 2000); // 2 saniye bekle (debounce)
+    return () => clearTimeout(timer);
+  }, [pendingCount, lastSyncedHash]); // LocalStorage degisikliklerini algilamak icin pendingCount'a ve zamanlayiciya bagliyiz
 
   return <div className="hidden shrink-0 items-center gap-2 lg:flex">
-    <div title={t("Saha Hava Durumu")} className="flex h-8 items-center gap-1.5 rounded-sm border px-2.5 text-xs text-muted-foreground"><CloudSun className="size-4 text-primary" /><span className="font-semibold tabular-nums text-foreground">34°C</span><Wind className="size-3.5" /><span className="tabular-nums">12 km/h</span></div>
-    <Button 
-      variant="outline" 
-      size="sm" 
-      onClick={handleSync}
-      disabled={isSyncing}
-      title={synced ? "Senkronize" : "Kaydedilmemis"} 
-      className={`h-8 gap-1.5 px-2.5 text-xs font-medium ${isSyncing ? 'animate-pulse opacity-50' : ''}`}
+    <div title={t("Saha Hava Durumu")} className="flex h-8 items-center gap-1.5 rounded-sm border px-2.5 text-xs text-muted-foreground">
+      <CloudSun className="size-4 text-primary" /><span className="font-semibold tabular-nums text-foreground">34°C</span><Wind className="size-3.5" /><span className="tabular-nums">12 km/h</span>
+    </div>
+    
+    <div 
+      title={syncStatus === 'syncing' ? "Buluta gönderiliyor..." : syncStatus === 'error' ? "Eşitleme Hatası" : pendingCount > 0 ? "Kaydedilmeyi Bekliyor" : "Bulutla Eşitlendi"} 
+      className={`flex h-8 items-center gap-1.5 rounded-sm border px-2.5 text-xs font-medium 
+        ${syncStatus === 'syncing' ? 'text-blue-500 animate-pulse' : syncStatus === 'error' ? 'text-destructive' : pendingCount > 0 ? 'text-amber-500' : 'text-success'}`}
     >
-      {synced ? <CloudCheck className="size-4 text-success" /> : <CloudUpload className="size-4 text-destructive" />}
-      <span>{isSyncing ? "Esitleniyor..." : (synced ? "Bulutla Esitle" : `Kaydet ve Esitle (${pendingCount})`)}</span>
-    </Button>
+      {syncStatus === 'syncing' ? <CloudUpload className="size-4" /> : 
+       syncStatus === 'error' ? <CloudUpload className="size-4" /> : 
+       pendingCount > 0 ? <CloudUpload className="size-4" /> : 
+       <CloudCheck className="size-4" />}
+      
+      <span>
+        {syncStatus === 'syncing' ? "Eşitleniyor..." : 
+         syncStatus === 'error' ? "Bağlantı Yok" : 
+         pendingCount > 0 ? `Taslak (${pendingCount})` : "Eşitlendi"}
+      </span>
+    </div>
   </div>;
 }
