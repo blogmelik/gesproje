@@ -37,14 +37,13 @@ jobs:
         path: dist-electron/*.exe
 
     - name: Push EXE to builds branch
-      shell: bash
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
         git fetch origin builds || echo "Branch not found"
         git checkout builds || git checkout -b builds
         mkdir -p release
-        cp dist-electron/*.exe release/SahaTakip-Masaustu-Guncel.exe || echo "Copy failed"
-        git add release/SahaTakip-Masaustu-Guncel.exe || echo "Nothing to add"
+        node -e "const fs = require('fs'); const files = fs.readdirSync('dist-electron'); const exe = files.find(f => f.endsWith('.exe') && !f.includes('uninstaller')); fs.copyFileSync('dist-electron/' + exe, 'release/SahaTakip-Masaustu-Guncel.exe');"
+        git add release/SahaTakip-Masaustu-Guncel.exe
         git commit -m "Auto-update EXE" || echo "No changes"
         git push origin builds --force
