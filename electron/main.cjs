@@ -1,5 +1,19 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, protocol, net } = require('electron');
 const path = require('path');
+
+// 'app' şemasını güvenli ve standart olarak kaydedelim
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      bypassCSP: true
+    }
+  }
+]);
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -13,19 +27,32 @@ function createWindow() {
     }
   });
 
-  // Üst menüyü gizle
   mainWindow.setMenuBarVisibility(false);
   mainWindow.autoHideMenuBar = true;
 
-  // Load the local URL in development, or the local html file in production
+  // Geliştirme modunda localhost, üretimde app:// protokolü
   if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:8080'); // VITE DEFAULT
+    mainWindow.loadURL('http://localhost:8080');
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    mainWindow.loadURL('app://-/index.html');
   }
 }
 
 app.whenReady().then(() => {
+  // app:// isteklerini yerel dosya sistemindeki dist klasörüne yönlendir
+  protocol.handle('app', (request) => {
+    const requestUrl = new URL(request.url);
+    const pathname = decodeURIComponent(requestUrl.pathname);
+    
+    // app://-/index.html -> dist/index.html
+    const cleanPath = pathname.replace(/^\/-/, '');
+    
+    const absolutePath = path.join(__dirname, '../dist', cleanPath === '' ? 'index.html' : cleanPath);
+    const fileUrl = 'file://' + absolutePath.replace(/\\/g, '/');
+    
+    return net.fetch(fileUrl);
+  });
+
   createWindow();
 
   app.on('activate', function () {
