@@ -36,14 +36,25 @@ jobs:
         name: ges-saha-takip-exe
         path: dist-electron/*.exe
 
-    - name: Push EXE to builds branch
+    - name: Debug and Push
+      shell: bash
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
         git fetch origin builds || echo "Branch not found"
         git checkout builds || git checkout -b builds
         mkdir -p release
-        node -e "const fs = require('fs'); const files = fs.readdirSync('dist-electron'); const exe = files.find(f => f.endsWith('.exe') && !f.includes('uninstaller')); fs.copyFileSync('dist-electron/' + exe, 'release/SahaTakip-Masaustu-Guncel.exe');"
-        git add release/SahaTakip-Masaustu-Guncel.exe
-        git commit -m "Auto-update EXE" || echo "No changes"
+        
+        # Log directory contents
+        echo "=== dist-electron contents ===" > release/debug.txt
+        ls -la dist-electron >> release/debug.txt
+        echo "=== win-unpacked contents ===" >> release/debug.txt
+        ls -la dist-electron/win-unpacked >> release/debug.txt
+        
+        # Try copy
+        echo "=== copy ===" >> release/debug.txt
+        node -e "const fs = require('fs'); const files = fs.readdirSync('dist-electron'); const exe = files.find(f => f.endsWith('.exe') && !f.includes('uninstaller')); if(exe) { fs.copyFileSync('dist-electron/' + exe, 'release/SahaTakip-Masaustu-Guncel.exe'); console.log('Copied ' + exe); } else { console.log('No EXE found'); }" >> release/debug.txt 2>&1
+        
+        git add release/
+        git commit -m "Auto-update EXE with debug" || echo "No changes"
         git push origin builds --force
