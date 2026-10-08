@@ -124,7 +124,9 @@
       "icon": "public/app-icon.png",
       "publisherName": "OUZ51-MELY"
     },
-    "shortcutName": "GES İmalat Takip"
+    "nsis": {
+      "shortcutName": "GES İmalat Takip"
+    }
   },
   "version": "1.0.0",
   "author": "OUZ51-MELY",
