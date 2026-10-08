@@ -121,8 +121,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/app-icon.png",
-      "publisherName": "OUZ51-MELY"
+      "icon": "public/app-icon.png"
     },
     "nsis": {
       "shortcutName": "GES İmalat Takip"
