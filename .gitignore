@@ -30,3 +30,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+dist-electron
+*.cjs
+*.ps1
+job_log.txt

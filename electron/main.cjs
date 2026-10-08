@@ -5,13 +5,17 @@ function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    title: 'Özgün İnşaat Saha Takip',
-    icon: path.join(__dirname, '../public/icon-256.png'), // Will update later if needed
+    title: 'GES İmalat Takip',
+    icon: path.join(__dirname, '../public/app-icon.png'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
     }
   });
+
+  // Üst menüyü gizle
+  mainWindow.setMenuBarVisibility(false);
+  mainWindow.autoHideMenuBar = true;
 
   // Load the local URL in development, or the local html file in production
   if (process.env.NODE_ENV === 'development') {

@@ -111,7 +111,7 @@
   "main": "electron/main.cjs",
   "build": {
     "appId": "com.ozguninsaat.saha",
-    "productName": "Özgün GES Saha Takip",
+    "productName": "Özgün İnşaat GES Saha İmalat Takip",
     "directories": {
       "output": "dist-electron"
     },
@@ -121,10 +121,12 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/icon-512.png"
-    }
+      "icon": "public/app-icon.png",
+      "publisherName": "OUZ51-MELY"
+    },
+    "shortcutName": "GES İmalat Takip"
   },
   "version": "1.0.0",
-  "author": "Ozgun Insaat",
+  "author": "OUZ51-MELY",
   "description": "Saha Takip Uygulamasi"
 }
