@@ -30,31 +30,24 @@ jobs:
         VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
         VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         
-    - name: Upload EXE
-      uses: actions/upload-artifact@v4
-      with:
-        name: ges-saha-takip-exe
-        path: dist-electron/*.exe
-
-    - name: Debug and Push
+    - name: Upload to GitHub Releases
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        # Rename the installer for a consistent download link
+        for f in dist-electron/*Setup*.exe; do
+           mv "$f" "SahaTakip-Masaustu-Guncel.exe"
+        done
+        
+        # Create or update the 'latest-win' tag
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git fetch origin builds || echo "Branch not found"
-        git checkout builds || git checkout -b builds
-        mkdir -p release
+        git tag -f latest-win
+        git push origin latest-win --force
         
-        # Log directory contents
-        echo "=== dist-electron contents ===" > release/debug.txt
-        ls -la dist-electron >> release/debug.txt
-        echo "=== win-unpacked contents ===" >> release/debug.txt
-        ls -la dist-electron/win-unpacked >> release/debug.txt
+        # Create release if it doesn't exist
+        gh release create latest-win --title "Masaüstü Sürümü" --notes "Windows EXE" || echo "Release already exists"
         
-        # Try copy
-        echo "=== copy ===" >> release/debug.txt
-        node -e "const fs = require('fs'); const files = fs.readdirSync('dist-electron'); const exe = files.find(f => f.endsWith('.exe') && !f.includes('uninstaller')); if(exe) { fs.copyFileSync('dist-electron/' + exe, 'release/SahaTakip-Masaustu-Guncel.exe'); console.log('Copied ' + exe); } else { console.log('No EXE found'); }" >> release/debug.txt 2>&1
-        
-        git add release/
-        git commit -m "Auto-update EXE with debug" || echo "No changes"
-        git push origin builds --force
+        # Upload the new EXE, overwriting the old one
+        gh release upload latest-win SahaTakip-Masaustu-Guncel.exe --clobber

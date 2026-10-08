@@ -45,7 +45,7 @@ function SettingsPage() {
 
   const checkUpdates = () => {
     const url = isElectron 
-      ? "https://raw.githubusercontent.com/blogmelik/gesproje/builds/release/SahaTakip-Masaustu-Guncel.exe"
+      ? "https://github.com/blogmelik/gesproje/releases/download/latest-win/SahaTakip-Masaustu-Guncel.exe"
       : "https://raw.githubusercontent.com/blogmelik/gesproje/builds/release/SahaTakip-Guncel.apk";
     
     // Redirect to download
