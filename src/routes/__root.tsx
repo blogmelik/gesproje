@@ -8,7 +8,6 @@ import {
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { FieldShell } from "@/components/field-shell";
 import { PinScreen } from "@/components/pin-screen";
 import { Toaster } from "@/components/ui/sonner";
@@ -40,8 +39,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
+      }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
