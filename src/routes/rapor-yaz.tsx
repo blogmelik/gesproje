@@ -84,7 +84,7 @@ function ReportPage() {
 
         const hasAnyData = Object.values(rowChanges).some(vals => vals.some(v => v > 0));
         if (hasAnyData) {
-          await sendReportSubmission({
+          const res = await sendReportSubmission({
             senderName: localStorage.getItem("ges-last-sender-name") || "Saha Ekibi",
             station: s,
             zone: ZONES[z] ?? "A",
@@ -92,8 +92,12 @@ function ReportPage() {
             summaryText: `İstasyon ${s + 1} › Bölge ${ZONES[z] ?? "A"} › Sıra ${r + 1} (${tables} masa)`,
             changes: rowChanges
           });
-          setSyncStatus("synced");
-          setTimeout(() => setSyncStatus("idle"), 4000);
+          if (res.success) {
+            setSyncStatus("synced");
+            setTimeout(() => setSyncStatus("idle"), 3000);
+          } else {
+            setSyncStatus("idle");
+          }
         } else {
           setSyncStatus("idle");
         }
@@ -101,7 +105,7 @@ function ReportPage() {
         console.warn("Auto sync error:", err);
         setSyncStatus("idle");
       }
-    }, 1500);
+    }, 800);
   };
 
   const handleSetItem = (key: string, index: number, value: number) => {

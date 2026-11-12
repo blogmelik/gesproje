@@ -66,11 +66,24 @@ export async function sendReportSubmission(
   const cloudRes = await publishSubmissionToCloud(submission);
 
   return {
-    success: true,
+    success: cloudRes.success,
     id: localId,
     message: cloudRes.message,
     sharedOffline: !cloudRes.success
   };
+}
+
+/** Tries to push unsynced local pending submissions to the cloud */
+export async function syncOfflineSubmissions(): Promise<number> {
+  const list = getLocalSubmissions();
+  let count = 0;
+  for (const item of list.slice(0, 15)) {
+    if (item.id.startsWith("sub_") && item.status === "pending") {
+      const res = await publishSubmissionToCloud(item);
+      if (res.success) count++;
+    }
+  }
+  return count;
 }
 
 /** Fetches incoming submissions from Cloud and merges with local list */

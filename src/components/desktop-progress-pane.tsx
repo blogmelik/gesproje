@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { FieldProgress } from "@/components/field-progress";
 import { useI18n } from "@/lib/i18n";
 import { ZONES, tableKey, pct, textTone, sumRange, useFieldData, type Data } from "@/lib/field-data";
+import { isDesktopApp } from "@/lib/device";
 
 type Props = {
   data: Data;
@@ -22,7 +23,7 @@ type Props = {
 export function DesktopProgressPane({ data, stationPct, station, zone, row, onSelect, setItem, reported, faultsReady, onFault }: Props) {
   const { t } = useI18n();
   const { locks = {}, toggleLock, stations, rows, tables, items, tableTotal } = useFieldData();
-  const isElectron = typeof window !== 'undefined' && (window.navigator.userAgent.toLowerCase().includes('electron') || window.location.protocol === 'app:');
+  const isElectron = isDesktopApp();
   const [openStations, setOpenStations] = useState<Set<number>>(() => new Set(station === null ? [] : [station]));
   const [openZones, setOpenZones] = useState<Set<string>>(() => new Set(station !== null && zone !== null ? [`${station}-${zone}`] : []));
   const [openRows, setOpenRows] = useState<Set<string>>(() => new Set());

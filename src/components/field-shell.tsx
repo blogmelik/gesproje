@@ -9,8 +9,10 @@ import { ProjectSettingsProvider, useProjectSettings } from "@/lib/project-setti
 import { AppearanceProvider, useAppearanceSettings } from "@/lib/appearance-settings";
 import { LanguageProvider, useI18n, LANGUAGES } from "@/lib/i18n";
 import { BackupDialog } from "@/components/backup-dialog";
-import { getPendingSubmissionCount, fetchSubmissionsFromCloud, getLocalSubmissions, approveSubmission } from "@/lib/submissions";
+import { getPendingSubmissionCount, fetchSubmissionsFromCloud, getLocalSubmissions, approveSubmission, syncOfflineSubmissions } from "@/lib/submissions";
 import { APP_VERSION, BUILD_NUMBER } from "@/lib/version";
+import { isDesktopApp } from "@/lib/device";
+import { pullSiteConfigFromCloud } from "@/lib/sync-service";
 
 
 const navigation = [
@@ -25,8 +27,7 @@ function Navigation({ collapsed = false, bottom = false, onNavigate }: { collaps
   const { t } = useI18n();
   const [pendingCount, setPendingCount] = useState(0);
 
-  const isDesktop = typeof window !== 'undefined' && 
-    (window.navigator.userAgent.toLowerCase().includes("electron") || window.location.protocol === "app:");
+  const isDesktop = isDesktopApp();
 
   useEffect(() => {
     if (!isDesktop) return;
@@ -79,8 +80,7 @@ function Navigation({ collapsed = false, bottom = false, onNavigate }: { collaps
 
 function DesktopSyncWatcher() {
   const { importData } = useFieldData();
-  const isDesktop = typeof window !== 'undefined' && 
-    (window.navigator.userAgent.toLowerCase().includes("electron") || window.location.protocol === "app:");
+  const isDesktop = isDesktopApp();
 
   useEffect(() => {
     if (!isDesktop) return;
@@ -91,10 +91,14 @@ function DesktopSyncWatcher() {
         if (res.success) {
           window.dispatchEvent(new CustomEvent("ges-submissions-updated"));
 
-          // Eğer otomatik dahil etme açıksa gelen bekleyen raporları doğrudan ana projeye aktar
+          // Eğer otomatik dahil etme açıksa gelen bekleyen raporları doğrudan ana projeye aktar (kronolojik sıra)
           if (localStorage.getItem("ges-auto-approve-v1") === "true") {
             const pending = getLocalSubmissions().filter(s => s.status === "pending");
-            for (const sub of pending) {
+            const chronological = [...pending].sort(
+              (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            );
+
+            for (const sub of chronological) {
               await approveSubmission(sub, (changes) => {
                 importData(changes);
               });
@@ -110,9 +114,30 @@ function DesktopSyncWatcher() {
     };
 
     syncCloud();
-    const interval = setInterval(syncCloud, 10000);
+    const interval = setInterval(syncCloud, 7000);
     return () => clearInterval(interval);
   }, [isDesktop, importData]);
+
+  return null;
+}
+
+function MobileSyncHelper() {
+  const isDesktop = isDesktopApp();
+  const { updateSiteConfig } = useFieldData();
+
+  useEffect(() => {
+    if (isDesktop) return;
+
+    // 1. Masaüstü yöneticisi parametreleri güncellediyse mobilde eşitle
+    pullSiteConfigFromCloud().then(cfg => {
+      if (cfg) updateSiteConfig(cfg);
+    });
+
+    // 2. Çevrimdışıyken gönderilemeyen bekleyen raporları buluta ilet
+    syncOfflineSubmissions();
+    const interval = setInterval(syncOfflineSubmissions, 12000);
+    return () => clearInterval(interval);
+  }, [isDesktop, updateSiteConfig]);
 
   return null;
 }
@@ -137,6 +162,7 @@ function FieldShellContent({ children }: { children: ReactNode }) {
   return (
     <FieldDataProvider>
       <DesktopSyncWatcher />
+      <MobileSyncHelper />
       <div className={dark ? "dark" : ""}>
         <div className="min-h-dvh bg-background text-foreground">
           <header className="fixed inset-x-0 top-0 z-40 border-b bg-card">

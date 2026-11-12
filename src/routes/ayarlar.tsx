@@ -12,6 +12,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useFieldData, type SiteConfig } from "@/lib/field-data";
 import { BackupDialog } from "@/components/backup-dialog";
 import { APP_VERSION, BUILD_NUMBER, RELEASE_DATE } from "@/lib/version";
+import { isDesktopApp } from "@/lib/device";
+import { broadcastSiteConfigToCloud } from "@/lib/sync-service";
 
 export const Route = createFileRoute("/ayarlar")({
   head: () => ({ meta: [
@@ -32,8 +34,7 @@ function SettingsPage() {
   const { siteConfig, updateSiteConfig } = useFieldData();
   const [newPin, setNewPin] = React.useState("");
 
-  const isElectron = typeof window !== 'undefined' && 
-    (window.navigator.userAgent.toLowerCase().includes("electron") || window.location.protocol === "app:");
+  const isDesktop = isDesktopApp();
 
   // Site configuration form state
   const [siteForm, setSiteForm] = React.useState<SiteConfig>(siteConfig);
@@ -44,7 +45,8 @@ function SettingsPage() {
 
   const handleSaveSiteParams = () => {
     updateSiteConfig(siteForm);
-    toast.success("Saha imalat parametreleri başarıyla güncellendi!");
+    broadcastSiteConfigToCloud(siteForm);
+    toast.success("Saha imalat parametreleri başarıyla güncellendi ve buluta iletildi!");
   };
 
   const updatePin = () => {
@@ -63,7 +65,7 @@ function SettingsPage() {
     window.location.reload();
   };
 
-  const updateUrl = isElectron 
+  const updateUrl = isDesktop 
     ? "https://github.com/blogmelik/gesproje/releases/download/latest-win/SahaTakip-Masaustu-Guncel.exe"
     : "https://raw.githubusercontent.com/blogmelik/gesproje/builds/release/SahaTakip-Guncel.apk";
 
@@ -133,129 +135,131 @@ function SettingsPage() {
         </div>
       </form>
 
-      {/* Saha & İmalat Parametreleri (Masaüstü / Yönetici Paneli) */}
-      <section className="max-w-2xl space-y-5 rounded-md border bg-card p-5 text-card-foreground shadow-sm sm:p-7">
-        <div className="flex items-center justify-between border-b pb-4">
-          <div className="space-y-1">
-            <h3 className="text-xl font-semibold flex items-center gap-2">
-              <Sliders className="size-5 text-primary" />
-              Saha İmalat Parametreleri {isElectron && "(Yönetici)"}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              İstasyon, sıra, masa sayıları ile masa başına düşen montaj hedef adetlerini manuel olarak belirleyin.
-            </p>
+      {/* Saha & İmalat Parametreleri (Masaüstü / Yönetici Paneli - Mobilde gizlidir) */}
+      {isDesktop && (
+        <section className="max-w-2xl space-y-5 rounded-md border bg-card p-5 text-card-foreground shadow-sm sm:p-7">
+          <div className="flex items-center justify-between border-b pb-4">
+            <div className="space-y-1">
+              <h3 className="text-xl font-semibold flex items-center gap-2">
+                <Sliders className="size-5 text-primary" />
+                Saha İmalat Parametreleri (Yönetici Paneli)
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                İstasyon, sıra, masa sayıları ile masa başına düşen montaj hedef adetlerini manuel olarak belirleyin.
+              </p>
+            </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="param-stations" className="text-xs font-semibold">İstasyon Sayısı</Label>
-            <Input
-              id="param-stations"
-              type="number"
-              min={1}
-              max={200}
-              value={siteForm.stations}
-              onChange={e => setSiteForm({ ...siteForm, stations: Number(e.target.value) })}
-              className="h-11 font-semibold"
-            />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="param-stations" className="text-xs font-semibold">İstasyon Sayısı</Label>
+              <Input
+                id="param-stations"
+                type="number"
+                min={1}
+                max={200}
+                value={siteForm.stations}
+                onChange={e => setSiteForm({ ...siteForm, stations: Number(e.target.value) })}
+                className="h-11 font-semibold"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="param-rows" className="text-xs font-semibold">Sıra Sayısı (Bölge Başına)</Label>
+              <Input
+                id="param-rows"
+                type="number"
+                min={1}
+                max={100}
+                value={siteForm.rows}
+                onChange={e => setSiteForm({ ...siteForm, rows: Number(e.target.value) })}
+                className="h-11 font-semibold"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="param-tables" className="text-xs font-semibold">Masa Sayısı (Sıra Başına)</Label>
+              <Input
+                id="param-tables"
+                type="number"
+                min={1}
+                max={50}
+                value={siteForm.tables}
+                onChange={e => setSiteForm({ ...siteForm, tables: Number(e.target.value) })}
+                className="h-11 font-semibold"
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="param-rows" className="text-xs font-semibold">Sıra Sayısı (Bölge Başına)</Label>
-            <Input
-              id="param-rows"
-              type="number"
-              min={1}
-              max={100}
-              value={siteForm.rows}
-              onChange={e => setSiteForm({ ...siteForm, rows: Number(e.target.value) })}
-              className="h-11 font-semibold"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="param-tables" className="text-xs font-semibold">Masa Sayısı (Sıra Başına)</Label>
-            <Input
-              id="param-tables"
-              type="number"
-              min={1}
-              max={50}
-              value={siteForm.tables}
-              onChange={e => setSiteForm({ ...siteForm, tables: Number(e.target.value) })}
-              className="h-11 font-semibold"
-            />
-          </div>
-        </div>
 
-        <div className="border-t pt-4 space-y-3">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            1 Masa İçin Hedef Montaj Adetleri
-          </h4>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
-            <div className="space-y-1.5">
-              <Label htmlFor="param-kolon" className="text-xs font-medium">Kolon Sayısı</Label>
-              <Input
-                id="param-kolon"
-                type="number"
-                min={1}
-                value={siteForm.kolonTarget}
-                onChange={e => setSiteForm({ ...siteForm, kolonTarget: Number(e.target.value) })}
-                className="h-10 text-center font-bold text-primary"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="param-asik" className="text-xs font-medium">Aşık Sayısı</Label>
-              <Input
-                id="param-asik"
-                type="number"
-                min={1}
-                value={siteForm.asikTarget}
-                onChange={e => setSiteForm({ ...siteForm, asikTarget: Number(e.target.value) })}
-                className="h-10 text-center font-bold text-primary"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="param-kiris" className="text-xs font-medium">Kiriş Sayısı</Label>
-              <Input
-                id="param-kiris"
-                type="number"
-                min={1}
-                value={siteForm.kirisTarget}
-                onChange={e => setSiteForm({ ...siteForm, kirisTarget: Number(e.target.value) })}
-                className="h-10 text-center font-bold text-primary"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="param-payanda" className="text-xs font-medium">Payanda Sayısı</Label>
-              <Input
-                id="param-payanda"
-                type="number"
-                min={1}
-                value={siteForm.payandaTarget}
-                onChange={e => setSiteForm({ ...siteForm, payandaTarget: Number(e.target.value) })}
-                className="h-10 text-center font-bold text-primary"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="param-panel" className="text-xs font-medium">Panel Sayısı</Label>
-              <Input
-                id="param-panel"
-                type="number"
-                min={1}
-                value={siteForm.panelTarget}
-                onChange={e => setSiteForm({ ...siteForm, panelTarget: Number(e.target.value) })}
-                className="h-10 text-center font-bold text-primary"
-              />
+          <div className="border-t pt-4 space-y-3">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              1 Masa İçin Hedef Montaj Adetleri
+            </h4>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+              <div className="space-y-1.5">
+                <Label htmlFor="param-kolon" className="text-xs font-medium">Kolon Sayısı</Label>
+                <Input
+                  id="param-kolon"
+                  type="number"
+                  min={1}
+                  value={siteForm.kolonTarget}
+                  onChange={e => setSiteForm({ ...siteForm, kolonTarget: Number(e.target.value) })}
+                  className="h-10 text-center font-bold text-primary"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="param-asik" className="text-xs font-medium">Aşık Sayısı</Label>
+                <Input
+                  id="param-asik"
+                  type="number"
+                  min={1}
+                  value={siteForm.asikTarget}
+                  onChange={e => setSiteForm({ ...siteForm, asikTarget: Number(e.target.value) })}
+                  className="h-10 text-center font-bold text-primary"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="param-kiris" className="text-xs font-medium">Kiriş Sayısı</Label>
+                <Input
+                  id="param-kiris"
+                  type="number"
+                  min={1}
+                  value={siteForm.kirisTarget}
+                  onChange={e => setSiteForm({ ...siteForm, kirisTarget: Number(e.target.value) })}
+                  className="h-10 text-center font-bold text-primary"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="param-payanda" className="text-xs font-medium">Payanda Sayısı</Label>
+                <Input
+                  id="param-payanda"
+                  type="number"
+                  min={1}
+                  value={siteForm.payandaTarget}
+                  onChange={e => setSiteForm({ ...siteForm, payandaTarget: Number(e.target.value) })}
+                  className="h-10 text-center font-bold text-primary"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="param-panel" className="text-xs font-medium">Panel Sayısı</Label>
+                <Input
+                  id="param-panel"
+                  type="number"
+                  min={1}
+                  value={siteForm.panelTarget}
+                  onChange={e => setSiteForm({ ...siteForm, panelTarget: Number(e.target.value) })}
+                  className="h-10 text-center font-bold text-primary"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex justify-end border-t pt-4">
-          <Button onClick={handleSaveSiteParams} className="gap-2">
-            <Save className="size-4" />
-            Parametreleri Güncelle ve Kaydet
-          </Button>
-        </div>
-      </section>
+          <div className="flex justify-end border-t pt-4">
+            <Button onClick={handleSaveSiteParams} className="gap-2">
+              <Save className="size-4" />
+              Parametreleri Güncelle ve Kaydet
+            </Button>
+          </div>
+        </section>
+      )}
 
       {/* Görünüm Ayarları */}
       <section aria-labelledby="appearance-heading" className="max-w-2xl space-y-5 border-t pt-6">
@@ -275,7 +279,7 @@ function SettingsPage() {
       </section>
 
       {/* Masaüstü Merkez Güvenlik Ayarları */}
-      {isElectron && (
+      {isDesktop && (
         <section className="max-w-2xl space-y-5 mt-10 p-6 border border-destructive/20 bg-destructive/5 rounded-lg">
           <div className="flex items-center gap-3 mb-4 text-destructive">
             <Lock className="size-6" />
@@ -323,7 +327,7 @@ function SettingsPage() {
               Sistem Güncellemesi
             </h3>
             <p className="text-sm text-muted-foreground">
-              {isElectron 
+              {isDesktop 
                 ? "Windows Masaüstü uygulamasının (.exe) en son güncel sürümünü indirin."
                 : "Android Mobil uygulamasının (.apk) en son güncel sürümünü indirin."}
             </p>
