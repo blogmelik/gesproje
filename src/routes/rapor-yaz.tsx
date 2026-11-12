@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft, ChevronRight, Minus, Plus, Check, TriangleAlert, CheckCircle2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { ArrowLeft, ChevronRight, Minus, Plus, Check, TriangleAlert, CheckCircle2, RefreshCw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,8 @@ import { FaultReportDialog } from "@/components/fault-report-dialog";
 import { DesktopProgressPane } from "@/components/desktop-progress-pane";
 import { useFaultReports } from "@/lib/fault-reports";
 import { useI18n } from "@/lib/i18n";
-import { ZONES, tableKey, pct, textTone, sumRange, useFieldData } from "@/lib/field-data";
+import { ZONES, tableKey, pct, textTone, sumRange, useFieldData, type Data } from "@/lib/field-data";
+import { sendReportSubmission } from "@/lib/submissions";
 
 export const Route = createFileRoute("/rapor-yaz")({
   head: () => ({ meta: [
@@ -43,6 +44,14 @@ function ReportPage() {
   const [zone, setZone] = useState<number | null>(null);
   const [row, setRow] = useState<number | null>(null);
 
+  const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "synced">("idle");
+  const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const dataRef = useRef<Data>(data);
+
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
   const step = station === null ? 1 : zone === null ? 2 : row === null ? 3 : 4;
   const title = t(step === 1 ? "İstasyon Seçimi" : step === 2 ? "Bölge Seçimi" : step === 3 ? "Sıra Seçimi" : "Masa İmalatları");
 
@@ -56,6 +65,64 @@ function ReportPage() {
     const summary = sumRange(data, key => key.startsWith(prefix), items, tableTotal);
     return pct(summary.done, summary.total);
   }
+
+  // Otomatik bulut eşitlemesi: Masada veri girildiğinde 1.5 sn sonra arka planda merkeze aktarır
+  const triggerAutoSync = (s: number, z: number, r: number) => {
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    setSyncStatus("syncing");
+
+    syncTimerRef.current = setTimeout(async () => {
+      try {
+        const rowChanges: Data = {};
+        for (let tIdx = 0; tIdx < tables; tIdx++) {
+          const k = tableKey(s, z, r, tIdx);
+          const currentVal = dataRef.current[k];
+          if (currentVal) {
+            rowChanges[k] = currentVal;
+          }
+        }
+
+        const hasAnyData = Object.values(rowChanges).some(vals => vals.some(v => v > 0));
+        if (hasAnyData) {
+          await sendReportSubmission({
+            senderName: localStorage.getItem("ges-last-sender-name") || "Saha Ekibi",
+            station: s,
+            zone: ZONES[z] ?? "A",
+            row: r,
+            summaryText: `İstasyon ${s + 1} › Bölge ${ZONES[z] ?? "A"} › Sıra ${r + 1} (${tables} masa)`,
+            changes: rowChanges
+          });
+          setSyncStatus("synced");
+          setTimeout(() => setSyncStatus("idle"), 4000);
+        } else {
+          setSyncStatus("idle");
+        }
+      } catch (err) {
+        console.warn("Auto sync error:", err);
+        setSyncStatus("idle");
+      }
+    }, 1500);
+  };
+
+  const handleSetItem = (key: string, index: number, value: number) => {
+    setItem(key, index, value);
+
+    // Optimistically update ref so debounced sync gets it immediately
+    const item = items[index];
+    if (item) {
+      const clamped = Math.max(0, Math.min(item.target, Number.isFinite(value) ? Math.trunc(value) : 0));
+      const currentArr = dataRef.current[key] ? [...dataRef.current[key]] : items.map(() => 0);
+      currentArr[index] = clamped;
+      dataRef.current = {
+        ...dataRef.current,
+        [key]: currentArr
+      };
+    }
+
+    if (station !== null && zone !== null && row !== null) {
+      triggerAutoSync(station, zone, row);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -76,9 +143,23 @@ function ReportPage() {
           <h2 className="text-2xl font-semibold">{t("İlerleme")}</h2>
           <span className="text-sm font-semibold text-muted-foreground lg:hidden">{t("Adım {n} / 4", { n: step })}</span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-full border">
-          <CheckCircle2 className="size-3.5 text-success" />
-          <span>{t("Anlık Otomatik Kayıt")}</span>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-3 py-1 rounded-full border shadow-2xs">
+          {syncStatus === "syncing" ? (
+            <>
+              <RefreshCw className="size-3.5 animate-spin text-amber-500" />
+              <span className="text-amber-500 font-medium">Merkeze Aktarılıyor...</span>
+            </>
+          ) : syncStatus === "synced" ? (
+            <>
+              <CheckCircle2 className="size-3.5 text-success" />
+              <span className="text-success font-medium">Merkeze İletildi ✓</span>
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="size-3.5 text-success/70" />
+              <span>Anlık Otomatik Kayıt</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -91,7 +172,7 @@ function ReportPage() {
           zone={zone}
           row={row}
           onSelect={(s, z, r) => { setStation(s); setZone(z); setRow(r); }}
-          setItem={setItem}
+          setItem={handleSetItem}
           reported={id => Boolean(faults.reports[id])}
           faultsReady={faults.ready}
           onFault={(id, label) => setSelectedFault({ id, label })}
@@ -247,7 +328,7 @@ function ReportPage() {
                               variant="outline"
                               size="icon"
                               disabled={value === 0 || locks[key]}
-                              onClick={() => setItem(key, index, value - 1)}
+                              onClick={() => handleSetItem(key, index, value - 1)}
                               aria-label={`${tableName} ${t(item.name)} ${t("azalt")}`}
                               className="h-12 w-12 border [&_svg]:size-6"
                             >
@@ -263,7 +344,7 @@ function ReportPage() {
                                 max={item.target}
                                 step={1}
                                 value={value}
-                                onChange={event => setItem(key, index, Number(event.target.value))}
+                                onChange={event => handleSetItem(key, index, Number(event.target.value))}
                                 disabled={locks[key]}
                                 className="h-12 disabled:opacity-50 disabled:cursor-not-allowed min-w-0 border bg-background px-1 text-center font-display text-2xl font-semibold md:text-2xl"
                               />
@@ -272,7 +353,7 @@ function ReportPage() {
                             <Button
                               size="icon"
                               disabled={value >= item.target || locks[key]}
-                              onClick={() => setItem(key, index, value + 1)}
+                              onClick={() => handleSetItem(key, index, value + 1)}
                               aria-label={`${tableName} ${t(item.name)} ${t("artır")}`}
                               className="h-12 w-12 border border-border [&_svg]:size-6"
                             >

@@ -9,7 +9,7 @@ import { ProjectSettingsProvider, useProjectSettings } from "@/lib/project-setti
 import { AppearanceProvider, useAppearanceSettings } from "@/lib/appearance-settings";
 import { LanguageProvider, useI18n, LANGUAGES } from "@/lib/i18n";
 import { BackupDialog } from "@/components/backup-dialog";
-import { getPendingSubmissionCount } from "@/lib/submissions";
+import { getPendingSubmissionCount, fetchSubmissionsFromCloud, getLocalSubmissions, approveSubmission } from "@/lib/submissions";
 
 
 const navigation = [
@@ -24,16 +24,38 @@ function Navigation({ collapsed = false, bottom = false, onNavigate }: { collaps
   const { t } = useI18n();
   const [pendingCount, setPendingCount] = useState(0);
 
+  const isDesktop = typeof window !== 'undefined' && 
+    (window.navigator.userAgent.toLowerCase().includes("electron") || window.location.protocol === "app:");
+
   useEffect(() => {
+    if (!isDesktop) return;
     setPendingCount(getPendingSubmissionCount());
+
+    const onUpdate = () => {
+      setPendingCount(getPendingSubmissionCount());
+    };
+    window.addEventListener("ges-submissions-updated", onUpdate);
+
     const iv = setInterval(() => {
       setPendingCount(getPendingSubmissionCount());
     }, 4000);
-    return () => clearInterval(iv);
-  }, []);
 
-  return <nav aria-label={bottom ? t("Alt menü") : t("Ana menü")} className={bottom ? "mx-auto grid w-full max-w-4xl grid-cols-5 gap-1 px-1 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "space-y-1 px-3"}>
-    {navigation.map(({ to, label, Icon, ...rest }) => {
+    return () => {
+      clearInterval(iv);
+      window.removeEventListener("ges-submissions-updated", onUpdate);
+    };
+  }, [isDesktop]);
+
+  // Mobil üzerinde Gelen Kutusu gösterilmez, sadece yetkili Masaüstü uygulamasında gösterilir
+  const itemsToRender = navigation.filter(item => {
+    if (item.to === "/gelen-kutusu" && !isDesktop) return false;
+    return true;
+  });
+
+  const colsClass = itemsToRender.length === 5 ? "grid-cols-5" : "grid-cols-4";
+
+  return <nav aria-label={bottom ? t("Alt menü") : t("Ana menü")} className={bottom ? `mx-auto grid w-full max-w-4xl ${colsClass} gap-1 px-1 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]` : "space-y-1 px-3"}>
+    {itemsToRender.map(({ to, label, Icon, ...rest }) => {
       const isBadge = "badge" in rest && rest.badge;
       return (
         <Button key={to} asChild variant="ghost" className={`w-full text-sidebar-muted hover:bg-sidebar-active hover:text-sidebar-foreground ${bottom ? "h-14 min-w-0 flex-col gap-0.5 px-0.5 text-[10px] font-medium sm:h-12 sm:flex-row sm:gap-2 sm:text-sm" : `h-11 text-sm font-medium ${collapsed ? "justify-center px-0" : "justify-start px-3"}`}`}>
@@ -52,6 +74,46 @@ function Navigation({ collapsed = false, bottom = false, onNavigate }: { collaps
       );
     })}
   </nav>;
+}
+
+function DesktopSyncWatcher() {
+  const { importData } = useFieldData();
+  const isDesktop = typeof window !== 'undefined' && 
+    (window.navigator.userAgent.toLowerCase().includes("electron") || window.location.protocol === "app:");
+
+  useEffect(() => {
+    if (!isDesktop) return;
+
+    const syncCloud = async () => {
+      try {
+        const res = await fetchSubmissionsFromCloud();
+        if (res.success) {
+          window.dispatchEvent(new CustomEvent("ges-submissions-updated"));
+
+          // Eğer otomatik dahil etme açıksa gelen bekleyen raporları doğrudan ana projeye aktar
+          if (localStorage.getItem("ges-auto-approve-v1") === "true") {
+            const pending = getLocalSubmissions().filter(s => s.status === "pending");
+            for (const sub of pending) {
+              await approveSubmission(sub, (changes) => {
+                importData(changes);
+              });
+            }
+            if (pending.length > 0) {
+              window.dispatchEvent(new CustomEvent("ges-submissions-updated"));
+            }
+          }
+        }
+      } catch {
+        /* silent */
+      }
+    };
+
+    syncCloud();
+    const interval = setInterval(syncCloud, 10000);
+    return () => clearInterval(interval);
+  }, [isDesktop, importData]);
+
+  return null;
 }
 
 export function FieldShell({ children }: { children: ReactNode }) {
@@ -73,6 +135,7 @@ function FieldShellContent({ children }: { children: ReactNode }) {
   }, [dark]);
   return (
     <FieldDataProvider>
+      <DesktopSyncWatcher />
       <div className={dark ? "dark" : ""}>
         <div className="min-h-dvh bg-background text-foreground">
           <header className="fixed inset-x-0 top-0 z-40 border-b bg-card">

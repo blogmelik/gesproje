@@ -1,7 +1,8 @@
 import CryptoJS from "crypto-js";
-import { getFirebaseInstance } from "./firebase";
-import { collection, addDoc, getDocs, updateDoc, doc, query, orderBy, limit } from "firebase/firestore";
 import type { Data } from "./field-data";
+import { publishSubmissionToCloud, pullSubmissionsFromCloud } from "./sync-service";
+import { getFirebaseInstance } from "./firebase";
+import { doc, updateDoc } from "firebase/firestore";
 
 export interface FieldSubmission {
   id: string;
@@ -43,12 +44,12 @@ export function getPendingSubmissionCount(): number {
   return getLocalSubmissions().filter(s => s.status === "pending").length;
 }
 
-/** Sends a field report submission to Firebase (if configured) and saves locally */
+/** Sends a field report submission to Cloud and saves locally */
 export async function sendReportSubmission(
   submissionData: Omit<FieldSubmission, "id" | "timestamp" | "status">
 ): Promise<{ success: boolean; id: string; message: string; sharedOffline?: boolean }> {
   const timestamp = new Date().toISOString();
-  const localId = `sub_${Date.now()}`;
+  const localId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
   const submission: FieldSubmission = {
     ...submissionData,
     id: localId,
@@ -61,63 +62,44 @@ export async function sendReportSubmission(
   list.unshift(submission);
   saveLocalSubmissions(list);
 
-  // 2. Try sending to Firebase Firestore
-  const fb = getFirebaseInstance();
-  if (fb) {
-    try {
-      const colRef = collection(fb.db, "ges_submissions");
-      const docRef = await addDoc(colRef, {
-        ...submission,
-        createdAt: timestamp
-      });
-      // update id with firestore id
-      submission.id = docRef.id;
-      saveLocalSubmissions(list);
-      return {
-        success: true,
-        id: docRef.id,
-        message: "Rapor bulut üzerinden merkeze başarıyla iletildi!"
-      };
-    } catch (err) {
-      console.warn("Firebase submission failed, falling back to offline", err);
-    }
-  }
+  // 2. Publish to cloud sync service
+  const cloudRes = await publishSubmissionToCloud(submission);
 
-  // 3. Fallback: If Firebase not available or failed, offer offline export/share
   return {
     success: true,
     id: localId,
-    message: "Rapor yerel olarak hazırlandı.",
-    sharedOffline: true
+    message: cloudRes.message,
+    sharedOffline: !cloudRes.success
   };
 }
 
-/** Fetches incoming submissions from Firebase Firestore and merges with local list */
+/** Fetches incoming submissions from Cloud and merges with local list */
 export async function fetchSubmissionsFromCloud(): Promise<{ success: boolean; count: number; message: string }> {
-  const fb = getFirebaseInstance();
-  if (!fb) {
-    return { success: false, count: 0, message: "Firebase henüz ayarlanmamış." };
-  }
-
   try {
-    const colRef = collection(fb.db, "ges_submissions");
-    const q = query(colRef, orderBy("createdAt", "desc"), limit(50));
-    const snapshot = await getDocs(q);
+    const cloudList = await pullSubmissionsFromCloud();
 
-    const cloudList: FieldSubmission[] = [];
-    snapshot.forEach(docSnap => {
-      const data = docSnap.data();
-      cloudList.push({
-        ...data,
-        id: docSnap.id
-      } as FieldSubmission);
-    });
-
-    // Merge with local list (avoid duplicates by ID)
+    // Merge with local list (avoid duplicates by ID, keep local status if already reviewed)
     const local = getLocalSubmissions();
     const map = new Map<string, FieldSubmission>();
-    for (const item of local) map.set(item.id, item);
-    for (const item of cloudList) map.set(item.id, item);
+    
+    // Put cloud items in map first
+    for (const item of cloudList) {
+      map.set(item.id, item);
+    }
+    // Overlay local items so local review status (approved/rejected) is preserved
+    for (const item of local) {
+      if (map.has(item.id)) {
+        const cloudItem = map.get(item.id)!;
+        map.set(item.id, {
+          ...cloudItem,
+          status: item.status, // preserve local review decision
+          reviewedAt: item.reviewedAt || cloudItem.reviewedAt,
+          reviewedBy: item.reviewedBy || cloudItem.reviewedBy
+        });
+      } else {
+        map.set(item.id, item);
+      }
+    }
 
     const merged = Array.from(map.values()).sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -128,14 +110,14 @@ export async function fetchSubmissionsFromCloud(): Promise<{ success: boolean; c
     return {
       success: true,
       count: pendingCount,
-      message: `${cloudList.length} rapor buluttan senkronize edildi.`
+      message: `${cloudList.length} rapor buluttan başarıyla çekildi.`
     };
   } catch (err) {
     console.error("fetchSubmissionsFromCloud error:", err);
     return {
       success: false,
       count: 0,
-      message: "Buluttan gelen raporlar çekilemedi."
+      message: "Buluttan veri çekilemedi. İnternet bağlantınızı kontrol edin."
     };
   }
 }

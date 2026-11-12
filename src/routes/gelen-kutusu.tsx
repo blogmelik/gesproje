@@ -33,11 +33,62 @@ function InboxPage() {
   const [activeTab, setActiveTab] = useState<"pending" | "approved" | "rejected">("pending");
   const [syncing, setSyncing] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [autoApprove, setAutoApprove] = useState<boolean>(() => localStorage.getItem("ges-auto-approve-v1") === "true");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadSubmissions = () => {
     setSubmissions(getLocalSubmissions());
   };
+
+  const toggleAutoApprove = () => {
+    const next = !autoApprove;
+    setAutoApprove(next);
+    localStorage.setItem("ges-auto-approve-v1", next ? "true" : "false");
+    toast.info(next ? "Otomatik Onaylama (Canlı Akış) Aktif Edildi." : "Manuel Onaylama Moduna Geçildi.");
+  };
+
+  // Otomatik bulut eşitlemesi: Sayfa açıldığında ve her 7 saniyede bir arka planda kontrol eder
+  useEffect(() => {
+    let mounted = true;
+
+    const silentSync = async () => {
+      try {
+        const res = await fetchSubmissionsFromCloud();
+        if (res.success && mounted) {
+          loadSubmissions();
+
+          // Eğer otomatik dahil et aktifse bekleyenleri anında projeye aktar
+          if (localStorage.getItem("ges-auto-approve-v1") === "true") {
+            const list = getLocalSubmissions().filter(s => s.status === "pending");
+            for (const sub of list) {
+              await approveSubmission(sub, (changes) => {
+                importData(changes);
+              });
+            }
+            if (list.length > 0) {
+              loadSubmissions();
+            }
+          }
+        }
+      } catch {
+        /* silent */
+      }
+    };
+
+    silentSync();
+    const interval = setInterval(silentSync, 7000);
+
+    const onUpdate = () => {
+      if (mounted) loadSubmissions();
+    };
+    window.addEventListener("ges-submissions-updated", onUpdate);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+      window.removeEventListener("ges-submissions-updated", onUpdate);
+    };
+  }, [importData]);
 
   const handleCloudSync = async () => {
     setSyncing(true);
@@ -72,6 +123,24 @@ function InboxPage() {
     } else {
       toast.error(res.message);
     }
+  };
+
+  const handleApproveAll = async () => {
+    if (pendingList.length === 0) return;
+    if (!confirm(`${pendingList.length} adet onay bekleyen raporun tümünü onaylayıp ana projeye dahil etmek istediğinize emin misiniz?`)) {
+      return;
+    }
+
+    let count = 0;
+    for (const sub of pendingList) {
+      await approveSubmission(sub, (changes) => {
+        importData(changes);
+      });
+      count++;
+    }
+
+    toast.success(`${count} adet rapor başarıyla projeye dahil edildi!`);
+    loadSubmissions();
   };
 
   const handleReject = async (sub: FieldSubmission) => {
@@ -128,7 +197,29 @@ function InboxPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {pendingList.length > 0 && (
+            <Button
+              size="sm"
+              onClick={handleApproveAll}
+              className="h-10 gap-1.5 bg-success hover:bg-success/90 text-white font-medium"
+            >
+              <Check className="size-4" />
+              <span>Tümünü Onayla ({pendingList.length})</span>
+            </Button>
+          )}
+
+          <Button
+            variant={autoApprove ? "default" : "outline"}
+            size="sm"
+            onClick={toggleAutoApprove}
+            className={`h-10 gap-1.5 ${autoApprove ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}`}
+            title="Açık olduğunda sahadan gelen raporlar doğrudan projeye dahil edilir"
+          >
+            <Clock className="size-4" />
+            <span>{autoApprove ? "Otomatik Dahil Et: AÇIK" : "Otomatik Dahil Et: KAPALI"}</span>
+          </Button>
+
           <Button
             variant="outline"
             size="sm"

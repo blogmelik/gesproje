@@ -4,7 +4,7 @@ export type MenuLayout = "sidebar" | "bottom";
 export const APPEARANCE_STORAGE_KEY = "ges-menu-layout-v1";
 
 export function parseMenuLayout(raw: string | null): MenuLayout {
-  return raw === "bottom" ? "bottom" : "sidebar";
+  return raw === "sidebar" ? "sidebar" : "bottom";
 }
 
 interface AppearanceSettings {
@@ -17,7 +17,7 @@ interface AppearanceSettings {
 const AppearanceContext = createContext<AppearanceSettings | null>(null);
 
 export function AppearanceProvider({ children }: { children: ReactNode }) {
-  const [layout, setLayoutState] = useState<MenuLayout>("sidebar");
+  const [layout, setLayoutState] = useState<MenuLayout>("bottom");
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
