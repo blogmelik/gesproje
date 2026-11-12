@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { sendReportSubmission, exportSubmissionFile, type FieldSubmission } from "@/lib/submissions";
-import { ITEMS, ZONES, type Data } from "@/lib/field-data";
+import { ZONES, type Data } from "@/lib/field-data";
 
 interface Props {
   station: number | null;

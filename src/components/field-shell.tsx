@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { LayoutDashboard, ClipboardPen, ListChecks, Inbox, Moon, Sun, PanelLeftClose, PanelLeftOpen, Menu, Settings, HardHat, CloudSun, Wind } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FieldDataProvider } from "@/lib/field-data";
+import { FieldDataProvider, useFieldData } from "@/lib/field-data";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ProjectSettingsProvider, useProjectSettings } from "@/lib/project-settings";
 import { AppearanceProvider, useAppearanceSettings } from "@/lib/appearance-settings";
@@ -98,10 +98,7 @@ function FieldShellContent({ children }: { children: ReactNode }) {
             {!bottom && <aside className={`sticky top-0 hidden h-dvh shrink-0 flex-col bg-sidebar pt-24 text-sidebar-foreground md:flex lg:pt-18 ${collapsed ? "w-20" : "w-60"}`}>
               {!collapsed && <p className="px-6 pb-4 text-xs font-medium text-sidebar-muted">{t("SAHA YÖNETİMİ")}</p>}
               <Navigation collapsed={collapsed} />
-              <div className="mt-auto px-3 pb-5">
-                {!collapsed && <div className="mb-4 flex items-center gap-3 border-t border-sidebar-active px-3 pt-5"><HardHat className="size-5 text-sidebar-muted" /><div className="text-xs leading-5"><p className="font-medium">{t("Saha İmalat Takip")}</p><p className="text-sidebar-muted">{t("36 istasyon · 10.368 masa")}</p></div></div>}
-                <Button variant="ghost" onClick={() => setCollapsed(value => !value)} title={collapsed ? t("Menüyü genişlet") : t("Menüyü daralt")} aria-label={collapsed ? t("Menüyü genişlet") : t("Menüyü daralt")} className="h-11 w-full justify-center text-sidebar-muted hover:bg-sidebar-active hover:text-sidebar-foreground">{collapsed ? <PanelLeftOpen /> : <><PanelLeftClose /><span>{t("Menüyü daralt")}</span></>}</Button>
-              </div>
+              <SidebarFooter collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
             </aside>}
             <main className={`flex min-w-0 flex-1 flex-col px-4 pt-28 sm:px-6 lg:px-6 lg:pt-20 ${bottom ? "pb-[calc(6rem_+_env(safe-area-inset-bottom))]" : "pb-0"}`}><div className={`min-h-[calc(100dvh-11rem)] ${bottom ? "w-full" : "mx-auto w-full max-w-6xl lg:max-w-none"}`}>{children}</div><footer className="mt-32 py-4 text-center text-[10px] font-light tracking-widest text-muted-foreground/40"><p>{t("© 2026 | Designed By OUZ51 | Tüm hakları saklıdır.")}</p></footer></main>
           </div>
@@ -112,6 +109,35 @@ function FieldShellContent({ children }: { children: ReactNode }) {
     </FieldDataProvider>
   );
 }
+function SidebarFooter({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  const { t } = useI18n();
+  const { stations, rows, tables } = useFieldData();
+  const tableCount = stations * 4 * rows * tables;
+
+  return (
+    <div className="mt-auto px-3 pb-5">
+      {!collapsed && (
+        <div className="mb-4 flex items-center gap-3 border-t border-sidebar-active px-3 pt-5">
+          <HardHat className="size-5 text-sidebar-muted" />
+          <div className="text-xs leading-5">
+            <p className="font-medium">{t("Saha İmalat Takip")}</p>
+            <p className="text-sidebar-muted">{t("{s} istasyon · {m} masa", { s: stations, m: tableCount.toLocaleString() })}</p>
+          </div>
+        </div>
+      )}
+      <Button
+        variant="ghost"
+        onClick={onToggle}
+        title={collapsed ? t("Menüyü genişlet") : t("Menüyü daralt")}
+        aria-label={collapsed ? t("Menüyü genişlet") : t("Menüyü daralt")}
+        className="h-11 w-full justify-center text-sidebar-muted hover:bg-sidebar-active hover:text-sidebar-foreground"
+      >
+        {collapsed ? <PanelLeftOpen /> : <><PanelLeftClose /><span>{t("Menüyü daralt")}</span></>}
+      </Button>
+    </div>
+  );
+}
+
 /** Header indicators: weather + manual cloud & local backup dialog */
 function HeaderIndicators() {
   const { t } = useI18n();

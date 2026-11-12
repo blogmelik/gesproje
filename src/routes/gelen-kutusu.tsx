@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useFieldData, ITEMS, TABLE_TOTAL } from "@/lib/field-data";
+import { useFieldData } from "@/lib/field-data";
 import { useI18n } from "@/lib/i18n";
 import {
   getLocalSubmissions,
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/gelen-kutusu")({
 
 function InboxPage() {
   const { t } = useI18n();
-  const { importData } = useFieldData();
+  const { importData, items } = useFieldData();
   const [submissions, setSubmissions] = useState<FieldSubmission[]>(() => getLocalSubmissions());
   const [activeTab, setActiveTab] = useState<"pending" | "approved" | "rejected">("pending");
   const [syncing, setSyncing] = useState(false);
@@ -303,7 +303,7 @@ function InboxPage() {
                         <thead className="bg-muted font-semibold text-muted-foreground">
                           <tr>
                             <th className="p-2 border-r">Masa Konumu</th>
-                            {ITEMS.map(i => (
+                            {items.map(i => (
                               <th key={i.name} className="p-2 border-r text-center">
                                 {i.name} (Hedef: {i.target})
                               </th>
@@ -317,7 +317,7 @@ function InboxPage() {
                             return (
                               <tr key={key} className="hover:bg-muted/40">
                                 <td className="p-2 font-sans font-medium border-r whitespace-nowrap">{label}</td>
-                                {ITEMS.map((item, idx) => (
+                                {items.map((item, idx) => (
                                   <td key={item.name} className="p-2 border-r text-center font-bold text-primary">
                                     {vals[idx] ?? 0}
                                   </td>

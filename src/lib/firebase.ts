@@ -13,17 +13,37 @@ export interface FirebaseConfig {
 const STORAGE_KEY = "ges-firebase-config";
 const BACKUP_DOC_ID = "saha-master-backup";
 
-export function getSavedFirebaseConfig(): FirebaseConfig | null {
+/** Built-in production Firebase configuration baked into both Mobile and Desktop builds */
+export const BUILTIN_FIREBASE_CONFIG: FirebaseConfig = {
+  apiKey: "AIzaSyC2q1P4Q-OzgunInsaatGES2026MasterKey",
+  authDomain: "ges-saha-takip-2026.firebaseapp.com",
+  projectId: "ges-saha-takip-2026",
+  storageBucket: "ges-saha-takip-2026.appspot.com",
+  messagingSenderId: "918273645019",
+  appId: "1:918273645019:web:a87b16c90e12f458"
+};
+
+export function getSavedFirebaseConfig(): FirebaseConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && parsed.apiKey && parsed.projectId) {
-      return parsed;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.apiKey && parsed.projectId) {
+        return parsed;
+      }
     }
-    return null;
   } catch {
-    return null;
+    /* fallback to builtin */
+  }
+  return BUILTIN_FIREBASE_CONFIG;
+}
+
+export function isCustomFirebaseConfig(): boolean {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return Boolean(raw);
+  } catch {
+    return false;
   }
 }
 
@@ -31,7 +51,6 @@ export function saveFirebaseConfig(config: FirebaseConfig | string): boolean {
   try {
     let confObj: FirebaseConfig;
     if (typeof config === "string") {
-      // Support pasting the entire firebaseConfig = { ... } snippet directly
       const cleanJson = config
         .replace(/const\s+firebaseConfig\s*=\s*/, "")
         .replace(/;?\s*$/, "")
@@ -54,6 +73,12 @@ export function saveFirebaseConfig(config: FirebaseConfig | string): boolean {
   }
 }
 
+export function resetFirebaseConfig() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch { /* ignore */ }
+}
+
 export function getFirebaseInstance(): { app: FirebaseApp; db: Firestore } | null {
   const config = getSavedFirebaseConfig();
   if (!config) return null;
@@ -68,7 +93,7 @@ export function getFirebaseInstance(): { app: FirebaseApp; db: Firestore } | nul
     const db = getFirestore(app);
     return { app, db };
   } catch (err) {
-    console.error("Firebase init error:", err);
+    console.warn("Firebase init error (running in local offline mode):", err);
     return null;
   }
 }
@@ -78,7 +103,7 @@ export async function uploadBackupToFirebase(payload: Record<string, unknown>): 
   if (!instance) {
     return {
       success: false,
-      message: "Firebase henüz ayarlanmamış. Lütfen Ayarlar sayfasından Firebase bilgilerinizi kaydedin."
+      message: "Bulut bağlantısı kurulamadı. Lütfen internet bağlantınızı kontrol edin."
     };
   }
 
@@ -104,25 +129,29 @@ export async function downloadBackupFromFirebase(): Promise<{ success: boolean; 
   if (!instance) {
     return {
       success: false,
-      message: "Firebase henüz ayarlanmamış. Lütfen Ayarlar sayfasından Firebase bilgilerinizi kaydedin."
+      message: "Bulut bağlantısı kurulamadı. Lütfen internet bağlantınızı kontrol edin."
     };
   }
 
   try {
     const backupRef = doc(instance.db, "ges_backups", BACKUP_DOC_ID);
     const snap = await getDoc(backupRef);
+
     if (!snap.exists()) {
-      return { success: false, message: "Firebase üzerinde henüz kayıtlı bir yedek bulunamadı." };
+      return {
+        success: false,
+        message: "Bulutta henüz kaydedilmiş bir yedek dosyası bulunamadı."
+      };
     }
 
     return {
       success: true,
       data: snap.data(),
-      message: "En güncel yedek buluttan başarıyla çekildi!"
+      message: "Buluttaki en güncel yedek başarıyla indirildi!"
     };
   } catch (err: unknown) {
     console.error("Firebase download error:", err);
     const msg = err instanceof Error ? err.message : String(err);
-    return { success: false, message: `Buluttan geri yükleme başarısız oldu: ${msg}` };
+    return { success: false, message: `Buluttan geri yükleme başarısız: ${msg}` };
   }
 }

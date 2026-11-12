@@ -1,14 +1,17 @@
-import { ITEMS, ROWS, STATIONS, TABLES, ZONES, tableKey } from "@/lib/field-data";
+import { ZONES, tableKey, loadSiteConfig, buildItems } from "@/lib/field-data";
 import { saveOrShareExcel } from "@/lib/excel-export";
 
-export const IMPORT_HEADERS = ["İstasyon", "Bölge", "Sıra", "Masa", ...ITEMS.map(i => i.name)];
+export const IMPORT_HEADERS = ["İstasyon", "Bölge", "Sıra", "Masa", ...buildItems(loadSiteConfig()).map(i => i.name)];
 
 export type ImportResult = { updates: Record<string, number[]>; errors: string[]; rows: number };
 
 export function parseImportRows(rows: unknown[][]): ImportResult {
+  const cfg = loadSiteConfig();
+  const currentItems = buildItems(cfg);
   const updates: Record<string, number[]> = {};
   const errors: string[] = [];
   let count = 0;
+
   rows.slice(1).forEach((row, i) => {
     const line = i + 2;
     if (!row || row.every(c => c === undefined || c === null || String(c).trim() === "")) return;
@@ -17,15 +20,15 @@ export function parseImportRows(rows: unknown[][]): ImportResult {
     const zone = ZONES.indexOf(String(row[1] ?? "").trim().toUpperCase());
     const r = Number(row[2]);
     const table = Number(row[3]);
-    if (!Number.isInteger(station) || station < 1 || station > STATIONS) return errors.push(`Satır ${line}: İstasyon 1-${STATIONS} olmalı`);
+    if (!Number.isInteger(station) || station < 1 || station > cfg.stations) return errors.push(`Satır ${line}: İstasyon 1-${cfg.stations} olmalı`);
     if (zone < 0) return errors.push(`Satır ${line}: Bölge A-D olmalı`);
-    if (!Number.isInteger(r) || r < 1 || r > ROWS) return errors.push(`Satır ${line}: Sıra 1-${ROWS} olmalı`);
-    if (!Number.isInteger(table) || table < 1 || table > TABLES) return errors.push(`Satır ${line}: Masa 1-${TABLES} olmalı`);
+    if (!Number.isInteger(r) || r < 1 || r > cfg.rows) return errors.push(`Satır ${line}: Sıra 1-${cfg.rows} olmalı`);
+    if (!Number.isInteger(table) || table < 1 || table > cfg.tables) return errors.push(`Satır ${line}: Masa 1-${cfg.tables} olmalı`);
     const values: number[] = [];
-    for (let k = 0; k < ITEMS.length; k++) {
+    for (let k = 0; k < currentItems.length; k++) {
       const raw = row[4 + k];
       const v = raw === undefined || raw === null || raw === "" ? 0 : Number(raw);
-      const item = ITEMS[k]!;
+      const item = currentItems[k]!;
       if (!Number.isInteger(v) || v < 0 || v > item.target) { errors.push(`Satır ${line}: ${item.name} 0-${item.target} arası tam sayı olmalı`); return; }
       values.push(v);
     }
@@ -45,7 +48,11 @@ export async function readImportFile(file: File): Promise<ImportResult> {
 
 export async function downloadTemplate() {
   const XLSX = await import("xlsx");
-  const ws = XLSX.utils.aoa_to_sheet([IMPORT_HEADERS, [1, "A", 1, 1, 24, 12, 12, 40, 56], [1, "A", 1, 2, 10, 0, 0, 0, 0]]);
+  const cfg = loadSiteConfig();
+  const currentItems = buildItems(cfg);
+  const headers = ["İstasyon", "Bölge", "Sıra", "Masa", ...currentItems.map(i => i.name)];
+  const sampleRow = [1, "A", 1, 1, ...currentItems.map(i => i.target)];
+  const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Veri");
   await saveOrShareExcel(wb, "saha_veri_sablonu.xlsx");

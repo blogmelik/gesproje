@@ -3,7 +3,7 @@ import { ChevronRight, Folder, FolderOpen, Table2, Lock, Unlock, TriangleAlert }
 import { Input } from "@/components/ui/input";
 import { FieldProgress } from "@/components/field-progress";
 import { useI18n } from "@/lib/i18n";
-import { ITEMS, STATIONS, ZONES, ROWS, TABLES, TABLE_TOTAL, tableKey, pct, textTone, sumRange, useFieldData, type Data } from "@/lib/field-data";
+import { ZONES, tableKey, pct, textTone, sumRange, useFieldData, type Data } from "@/lib/field-data";
 
 type Props = {
   data: Data;
@@ -21,14 +21,15 @@ type Props = {
 /** Desktop-only split pane: explorer-style tree (30%) + compact spreadsheet entry (70%). */
 export function DesktopProgressPane({ data, stationPct, station, zone, row, onSelect, setItem, reported, faultsReady, onFault }: Props) {
   const { t } = useI18n();
-  const { locks = {}, toggleLock } = useFieldData();
+  const { locks = {}, toggleLock, stations, rows, tables, items, tableTotal } = useFieldData();
   const isElectron = typeof window !== 'undefined' && (window.navigator.userAgent.toLowerCase().includes('electron') || window.location.protocol === 'app:');
   const [openStations, setOpenStations] = useState<Set<number>>(() => new Set(station === null ? [] : [station]));
   const [openZones, setOpenZones] = useState<Set<string>>(() => new Set(station !== null && zone !== null ? [`${station}-${zone}`] : []));
   const [openRows, setOpenRows] = useState<Set<string>>(() => new Set());
   const [activeTable, setActiveTable] = useState<number | null>(null);
   const toggle = <T,>(set: Set<T>, value: T) => { const next = new Set(set); if (next.has(value)) next.delete(value); else next.add(value); return next; };
-  const prefixPct = (prefix: string) => { const s = sumRange(data, key => key.startsWith(prefix)); return pct(s.done, s.total); };
+  const prefixPct = (prefix: string) => { const s = sumRange(data, key => key.startsWith(prefix), items, tableTotal); return pct(s.done, s.total); };
+  
   function pick(s: number, z: number, r: number, table: number) {
     onSelect(s, z, r, table);
     setActiveTable(table);
@@ -40,7 +41,7 @@ export function DesktopProgressPane({ data, stationPct, station, zone, row, onSe
     <aside aria-label={t("Saha Gezgini")} className="flex w-[30%] min-w-0 flex-col border-r">
       <p className="border-b bg-muted px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("Saha Gezgini")}</p>
       <ul role="tree" className="min-h-0 flex-1 overflow-y-auto p-2">
-        {Array.from({ length: STATIONS }, (_, s) => {
+        {Array.from({ length: stations }, (_, s) => {
           const sOpen = openStations.has(s);
           return <li key={s} role="treeitem" aria-expanded={sOpen}>
             <button type="button" className={`${node} font-medium`} onClick={() => setOpenStations(v => toggle(v, s))}>
@@ -61,7 +62,7 @@ export function DesktopProgressPane({ data, stationPct, station, zone, row, onSe
                     <span className={`text-xs tabular-nums ${textTone(zp)}`}>%{zp}</span>
                   </button>
                   {zOpen && <ul role="group" className="ml-3 border-l pl-1">
-                    {Array.from({ length: ROWS }, (_, r) => {
+                    {Array.from({ length: rows }, (_, r) => {
                       const rk = `${s}-${z}-${r}`;
                       const rOpen = openRows.has(rk) || (station === s && zone === z && row === r);
                       const current = station === s && zone === z && row === r;
@@ -72,9 +73,9 @@ export function DesktopProgressPane({ data, stationPct, station, zone, row, onSe
                           <span className={`text-xs tabular-nums ${textTone(prefixPct(`${rk}-`))}`}>%{prefixPct(`${rk}-`)}</span>
                         </button>
                         {rOpen && <ul role="group" className="ml-3 border-l pl-1">
-                          {Array.from({ length: TABLES }, (_, m) => {
+                          {Array.from({ length: tables }, (_, m) => {
                             const vals = data[tableKey(s, z, r, m)] ?? [];
-                            const mp = pct(vals.reduce((a, b) => a + b, 0), TABLE_TOTAL);
+                            const mp = pct(vals.reduce((a, b) => a + b, 0), tableTotal);
                             const sel = current && activeTable === m;
                             return <li key={m} role="treeitem" aria-selected={sel}>
                               <button type="button" className={`${node} ${sel ? "bg-primary text-primary-foreground hover:bg-primary" : ""}`} onClick={() => pick(s, z, r, m)}>
@@ -105,16 +106,16 @@ export function DesktopProgressPane({ data, stationPct, station, zone, row, onSe
               <thead>
                 <tr className="bg-muted text-left text-xs font-semibold text-muted-foreground">
                   <th className="border px-2 py-1.5">{t("Masa")}</th>
-                  {ITEMS.map(item => <th key={item.name} className="border px-2 py-1.5">{t(item.name)} <span className="font-normal">/ {item.target}</span></th>)}
+                  {items.map(item => <th key={item.name} className="border px-2 py-1.5">{t(item.name)} <span className="font-normal">/ {item.target}</span></th>)}
                   <th className="border px-2 py-1.5 text-right">{t("Toplam")}</th>
                 </tr>
               </thead>
               <tbody>
-                {Array.from({ length: TABLES }, (_, m) => {
+                {Array.from({ length: tables }, (_, m) => {
                   const key = tableKey(station, zone, row, m);
                   const values = data[key] ?? [];
                   const tableName = t("Masa {n}", { n: m + 1 });
-                  const total = pct(values.reduce((a, b) => a + b, 0), TABLE_TOTAL);
+                  const total = pct(values.reduce((a, b) => a + b, 0), tableTotal);
                   return <tr key={key} className={activeTable === m ? "bg-accent/40" : ""} onFocus={() => setActiveTable(m)}>
                     <th scope="row" className="border px-2 py-1.5 text-left font-semibold whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
@@ -122,7 +123,7 @@ export function DesktopProgressPane({ data, stationPct, station, zone, row, onSe
                             <button 
                               onClick={() => toggleLock(key)}
                               className={`p-1 rounded hover:bg-muted ${locks[key] ? 'text-destructive' : 'text-muted-foreground'}`}
-                              title={locks[key] ? "Kilidi Ac" : "Kilitle"}
+                              title={locks[key] ? "Kilidi Aç" : "Kilitle"}
                             >
                               {locks[key] ? <Lock className="size-4" /> : <Unlock className="size-4" />}
                             </button>
@@ -132,7 +133,7 @@ export function DesktopProgressPane({ data, stationPct, station, zone, row, onSe
                           <span>{tableName}</span>
                         </div>
                       </th>
-                    {ITEMS.map((item, index) => {
+                    {items.map((item, index) => {
                       const value = values[index] ?? 0;
                       const progress = pct(value, item.target);
                       const id = `${key}-${index}`;

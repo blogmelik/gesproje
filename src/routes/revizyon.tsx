@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ITEMS, STATIONS, ZONES } from "@/lib/field-data";
+import { ITEMS, ZONES, useFieldData } from "@/lib/field-data";
 import { useI18n, translate, type Language } from "@/lib/i18n";
 import { useTeams } from "@/lib/teams";
 import { ExcelImportCard } from "@/components/excel-import-card";
@@ -48,6 +48,7 @@ function toRows(reports: Record<string, FaultReport>, lang: Language, locale: st
 function RevisionPage() {
   const { reports, save, remove, ready, error } = useFaultReports();
   const { t, lang, locale } = useI18n();
+  const { stations, items } = useFieldData();
   const teams = useTeams();
   const [status, setStatus] = useState("all");
   const [station, setStation] = useState("all");
@@ -115,8 +116,8 @@ function RevisionPage() {
     </div>
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       {filter(t("Durum"), status, setStatus, [["all", t("Tüm Durumlar")], ["unresolved", t("Sadece Açık Hatalar")], ["Açık", t("Açık")], ["Kritik", t("Kritik")], ["Giderildi", t("Giderildi")]])}
-      {filter(t("İstasyon"), station, setStation, [["all", t("Tüm İstasyonlar")], ...Array.from({ length: STATIONS }, (_, i): [string, string] => [String(i + 1), t("İstasyon {n}", { n: i + 1 })])])}
-      {filter(t("İmalat Kalemi"), item, setItem, [["all", t("Tüm Kalemler")], ...ITEMS.map((x): [string, string] => [x.name, t(x.name)])])}
+      {filter(t("İstasyon"), station, setStation, [["all", t("Tüm İstasyonlar")], ...Array.from({ length: stations }, (_, i): [string, string] => [String(i + 1), t("İstasyon {n}", { n: i + 1 })])])}
+      {filter(t("İmalat Kalemi"), item, setItem, [["all", t("Tüm Kalemler")], ...items.map((x): [string, string] => [x.name, t(x.name)])])}
     </div>
     {error && <p role="alert" className="font-semibold text-destructive">{t(error)}</p>}
     {!ready ? <p className="text-muted-foreground">{t("Kayıtlar yükleniyor…")}</p> : rows.length === 0 ?

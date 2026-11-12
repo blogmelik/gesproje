@@ -11,17 +11,19 @@ export interface BackupPayload {
   settings: string | null;
   teams: string | null;
   locked: string | null;
+  siteConfig?: string | null;
 }
 
 export function createBackupPayload(): BackupPayload {
   return {
-    version: "1.0",
+    version: "2.0",
     timestamp: new Date().toISOString(),
     progress: localStorage.getItem("ges-progress-v1"),
     faults: localStorage.getItem("ges-faults"),
     settings: localStorage.getItem("ges-settings"),
     teams: localStorage.getItem("ges-teams"),
-    locked: localStorage.getItem("ges-locked-v1")
+    locked: localStorage.getItem("ges-locked-v1"),
+    siteConfig: localStorage.getItem("ges-site-config-v2")
   };
 }
 
@@ -32,6 +34,7 @@ export function restoreBackupPayload(payload: Partial<BackupPayload>): boolean {
     if (payload.settings) localStorage.setItem("ges-settings", payload.settings);
     if (payload.teams) localStorage.setItem("ges-teams", payload.teams);
     if (payload.locked) localStorage.setItem("ges-locked-v1", payload.locked);
+    if (payload.siteConfig) localStorage.setItem("ges-site-config-v2", payload.siteConfig);
     return true;
   } catch (err) {
     console.error("Restore error:", err);
