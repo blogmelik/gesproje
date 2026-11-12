@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AyarlarRouteImport } from './routes/ayarlar'
+import { Route as GelenKutusuRouteImport } from './routes/gelen-kutusu'
 import { Route as RaporYazRouteImport } from './routes/rapor-yaz'
 import { Route as RevizyonRouteImport } from './routes/revizyon'
 
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
 const AyarlarRoute = AyarlarRouteImport.update({
   id: '/ayarlar',
   path: '/ayarlar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GelenKutusuRoute = GelenKutusuRouteImport.update({
+  id: '/gelen-kutusu',
+  path: '/gelen-kutusu',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RaporYazRoute = RaporYazRouteImport.update({
@@ -38,12 +44,14 @@ const RevizyonRoute = RevizyonRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ayarlar': typeof AyarlarRoute
+  '/gelen-kutusu': typeof GelenKutusuRoute
   '/rapor-yaz': typeof RaporYazRoute
   '/revizyon': typeof RevizyonRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ayarlar': typeof AyarlarRoute
+  '/gelen-kutusu': typeof GelenKutusuRoute
   '/rapor-yaz': typeof RaporYazRoute
   '/revizyon': typeof RevizyonRoute
 }
@@ -51,20 +59,23 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/ayarlar': typeof AyarlarRoute
+  '/gelen-kutusu': typeof GelenKutusuRoute
   '/rapor-yaz': typeof RaporYazRoute
   '/revizyon': typeof RevizyonRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/ayarlar' | '/rapor-yaz' | '/revizyon'
+  fullPaths: '/' | '/ayarlar' | '/gelen-kutusu' | '/rapor-yaz' | '/revizyon'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/ayarlar' | '/rapor-yaz' | '/revizyon'
-  id: '__root__' | '/' | '/ayarlar' | '/rapor-yaz' | '/revizyon'
+  to: '/' | '/ayarlar' | '/gelen-kutusu' | '/rapor-yaz' | '/revizyon'
+  id:
+    '__root__' | '/' | '/ayarlar' | '/gelen-kutusu' | '/rapor-yaz' | '/revizyon'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AyarlarRoute: typeof AyarlarRoute
+  GelenKutusuRoute: typeof GelenKutusuRoute
   RaporYazRoute: typeof RaporYazRoute
   RevizyonRoute: typeof RevizyonRoute
 }
@@ -83,6 +94,13 @@ declare module '@tanstack/react-router' {
       path: '/ayarlar'
       fullPath: '/ayarlar'
       preLoaderRoute: typeof AyarlarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gelen-kutusu': {
+      id: '/gelen-kutusu'
+      path: '/gelen-kutusu'
+      fullPath: '/gelen-kutusu'
+      preLoaderRoute: typeof GelenKutusuRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rapor-yaz': {
@@ -105,6 +123,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AyarlarRoute: AyarlarRoute,
+  GelenKutusuRoute: GelenKutusuRoute,
   RaporYazRoute: RaporYazRoute,
   RevizyonRoute: RevizyonRoute,
 }

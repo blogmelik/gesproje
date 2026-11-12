@@ -1,7 +1,7 @@
 import ozgunLogo from "@/assets/ozgun-logo-text.png";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { LayoutDashboard, ClipboardPen, ListChecks, Moon, Sun, PanelLeftClose, PanelLeftOpen, Menu, Settings, HardHat, CloudSun, Wind } from "lucide-react";
+import { LayoutDashboard, ClipboardPen, ListChecks, Inbox, Moon, Sun, PanelLeftClose, PanelLeftOpen, Menu, Settings, HardHat, CloudSun, Wind } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FieldDataProvider } from "@/lib/field-data";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -9,21 +9,48 @@ import { ProjectSettingsProvider, useProjectSettings } from "@/lib/project-setti
 import { AppearanceProvider, useAppearanceSettings } from "@/lib/appearance-settings";
 import { LanguageProvider, useI18n, LANGUAGES } from "@/lib/i18n";
 import { BackupDialog } from "@/components/backup-dialog";
+import { getPendingSubmissionCount } from "@/lib/submissions";
 
 
 const navigation = [
   { to: "/", label: "Genel Bakış", Icon: LayoutDashboard },
   { to: "/rapor-yaz", label: "İlerleme", Icon: ClipboardPen },
   { to: "/revizyon", label: "Rapor Yönetimi", Icon: ListChecks },
+  { to: "/gelen-kutusu", label: "Gelen Kutusu", Icon: Inbox, badge: true },
   { to: "/ayarlar", label: "Ayarlar", Icon: Settings },
 ] as const;
 
 function Navigation({ collapsed = false, bottom = false, onNavigate }: { collapsed?: boolean; bottom?: boolean; onNavigate?: () => void }) {
   const { t } = useI18n();
-  return <nav aria-label={bottom ? t("Alt menü") : t("Ana menü")} className={bottom ? "mx-auto grid w-full max-w-4xl grid-cols-4 gap-1 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "space-y-1 px-3"}>
-    {navigation.map(({ to, label, Icon }) => <Button key={to} asChild variant="ghost" className={`w-full text-sidebar-muted hover:bg-sidebar-active hover:text-sidebar-foreground ${bottom ? "h-14 min-w-0 flex-col gap-1 px-1 text-[11px] font-medium sm:h-12 sm:flex-row sm:gap-2 sm:text-sm" : `h-11 text-sm font-medium ${collapsed ? "justify-center px-0" : "justify-start px-3"}`}`}>
-      <Link to={to} onClick={onNavigate} title={collapsed ? t(label) : undefined} aria-label={t(label)} activeOptions={{ exact: true }} activeProps={{ className: "bg-sidebar-active text-sidebar-foreground" }}><Icon className="size-5 shrink-0" />{!collapsed && <span className={bottom ? "min-w-0 whitespace-normal text-center leading-tight" : ""}>{t(label)}</span>}</Link>
-    </Button>)}
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    setPendingCount(getPendingSubmissionCount());
+    const iv = setInterval(() => {
+      setPendingCount(getPendingSubmissionCount());
+    }, 4000);
+    return () => clearInterval(iv);
+  }, []);
+
+  return <nav aria-label={bottom ? t("Alt menü") : t("Ana menü")} className={bottom ? "mx-auto grid w-full max-w-4xl grid-cols-5 gap-1 px-1 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "space-y-1 px-3"}>
+    {navigation.map(({ to, label, Icon, ...rest }) => {
+      const isBadge = "badge" in rest && rest.badge;
+      return (
+        <Button key={to} asChild variant="ghost" className={`w-full text-sidebar-muted hover:bg-sidebar-active hover:text-sidebar-foreground ${bottom ? "h-14 min-w-0 flex-col gap-0.5 px-0.5 text-[10px] font-medium sm:h-12 sm:flex-row sm:gap-2 sm:text-sm" : `h-11 text-sm font-medium ${collapsed ? "justify-center px-0" : "justify-start px-3"}`}`}>
+          <Link to={to} onClick={onNavigate} title={collapsed ? t(label) : undefined} aria-label={t(label)} activeOptions={{ exact: true }} activeProps={{ className: "bg-sidebar-active text-sidebar-foreground" }}>
+            <div className="relative shrink-0 flex items-center justify-center">
+              <Icon className="size-5 shrink-0" />
+              {isBadge && pendingCount > 0 && (
+                <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground animate-pulse">
+                  {pendingCount > 9 ? "9+" : pendingCount}
+                </span>
+              )}
+            </div>
+            {!collapsed && <span className={bottom ? "min-w-0 truncate text-center leading-tight text-[10px] sm:text-xs" : ""}>{t(label)}</span>}
+          </Link>
+        </Button>
+      );
+    })}
   </nav>;
 }
 

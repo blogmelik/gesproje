@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, ChevronRight, Minus, Plus, Lock, Check, TriangleAlert, Save } from "lucide-react";
+import { ArrowLeft, ChevronRight, Minus, Plus, Lock, Check, TriangleAlert, Save, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppearanceSettings } from "@/lib/appearance-settings";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { FieldProgress } from "@/components/field-progress";
 import { FaultReportDialog } from "@/components/fault-report-dialog";
 import { DesktopProgressPane } from "@/components/desktop-progress-pane";
+import { SubmitReportDialog } from "@/components/submit-report-dialog";
 import { useFaultReports } from "@/lib/fault-reports";
 import { useI18n } from "@/lib/i18n";
 import { ITEMS, STATIONS, ZONES, ROWS, TABLES, TABLE_TOTAL, tableKey, pct, textTone, sumRange, useFieldData } from "@/lib/field-data";
@@ -46,14 +47,30 @@ function ReportPage() {
     return pct(summary.done, summary.total);
   }
   return <div className={`space-y-5 ${pendingCount ? "pb-20" : ""}`}>
-    {pendingCount > 0 && <div className={`fixed right-4 z-30 sm:right-6 ${layout === "bottom" ? "bottom-[calc(5.5rem+env(safe-area-inset-bottom))]" : "bottom-[calc(1rem+env(safe-area-inset-bottom))]"}`}>
-      <Button className="h-12 px-6 shadow-sm" onClick={() => { saveChanges(); toast.success(t("İlerleme kaydedildi")); }}><Save className="size-5" />{t("Kayıt et")}</Button>
+    {pendingCount > 0 && <div className={`fixed right-4 z-30 sm:right-6 flex items-center gap-2 ${layout === "bottom" ? "bottom-[calc(5.5rem+env(safe-area-inset-bottom))]" : "bottom-[calc(1rem+env(safe-area-inset-bottom))]"}`}>
+      <Button className="h-12 px-5 shadow-sm font-semibold" onClick={() => { saveChanges(); toast.success(t("İlerleme kaydedildi")); }}><Save className="size-5" />{t("Kayıt et")}</Button>
+      <SubmitReportDialog station={station} zone={zone} row={row} data={data} onBeforeSend={saveChanges}>
+        <Button className="h-12 px-5 shadow-sm bg-success hover:bg-success/90 text-white font-semibold gap-2">
+          <Send className="size-5" />
+          <span>{t("Onayla ve Gönder")}</span>
+        </Button>
+      </SubmitReportDialog>
     </div>}
     {selectedFault && <FaultReportDialog key={selectedFault.id} context={selectedFault} initial={faults.reports[selectedFault.id]} storageError={faults.error} onSave={faults.save} onClose={() => setSelectedFault(null)} />}
     {faults.error && !selectedFault && <p role="alert" className="text-sm font-semibold text-destructive">{faults.error}</p>}
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-      <h2 className="text-2xl font-semibold">{t("İlerleme")}</h2>
-      <span className="text-sm font-semibold text-muted-foreground lg:hidden">{t("Adım {n} / 4", { n: step })}</span>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <h2 className="text-2xl font-semibold">{t("İlerleme")}</h2>
+        <span className="text-sm font-semibold text-muted-foreground lg:hidden">{t("Adım {n} / 4", { n: step })}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <SubmitReportDialog station={station} zone={zone} row={row} data={data} onBeforeSend={saveChanges}>
+          <Button variant="outline" className="h-10 gap-2 font-semibold">
+            <Send className="size-4 text-primary" />
+            <span>{t("Merkeze Gönder")}</span>
+          </Button>
+        </SubmitReportDialog>
+      </div>
     </div>
     <div className="hidden lg:block">
       <DesktopProgressPane data={data} stationPct={stationPct} station={station} zone={zone} row={row}
@@ -84,7 +101,17 @@ function ReportPage() {
     </nav>}
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
       <h3 className="min-w-0 text-2xl font-semibold">{title}</h3>
-      {step > 1 && <Button variant="outline" onClick={() => backTo(step - 1)} className="h-11 shrink-0 border px-3 font-semibold"><ArrowLeft />{t("Geri Dön")}</Button>}
+      <div className="flex items-center gap-2">
+        {step === 4 && (
+          <SubmitReportDialog station={station} zone={zone} row={row} data={data} onBeforeSend={saveChanges}>
+            <Button size="sm" className="h-10 px-3 bg-success hover:bg-success/90 text-white font-semibold gap-1.5">
+              <Send className="size-4" />
+              <span>{t("Onayla ve Gönder")}</span>
+            </Button>
+          </SubmitReportDialog>
+        )}
+        {step > 1 && <Button variant="outline" onClick={() => backTo(step - 1)} className="h-10 shrink-0 border px-3 font-semibold"><ArrowLeft />{t("Geri Dön")}</Button>}
+      </div>
     </div>
     {step === 1 && <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
       {Array.from({ length: STATIONS }, (_, index) => <SelectionCard key={index} label={t("İstasyon {n}", { n: index + 1 })} number={String(index + 1)} caption={t("İstasyon")} progress={stationPct[index] ?? 0} onClick={() => setStation(index)} />)}
