@@ -4,9 +4,10 @@ import { APPEARANCE_STORAGE_KEY, AppearanceProvider, parseMenuLayout, useAppeara
 
 describe("Appearance settings", () => {
   beforeEach(() => localStorage.clear());
-  it("defaults to sidebar for missing or invalid values", () => {
-    expect(parseMenuLayout(null)).toBe("sidebar");
-    expect(parseMenuLayout("unknown")).toBe("sidebar");
+  it("defaults to bottom for missing or invalid values", () => {
+    expect(parseMenuLayout(null)).toBe("bottom");
+    expect(parseMenuLayout("unknown")).toBe("bottom");
+    expect(parseMenuLayout("sidebar")).toBe("sidebar");
   });
   it("shares changes immediately and restores the saved layout", async () => {
     const first = renderHook(() => ({ shell: useAppearanceSettings(), form: useAppearanceSettings() }), { wrapper: AppearanceProvider });

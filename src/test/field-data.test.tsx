@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { ITEMS, STATIONS, ROWS, TABLES, ZONES, seedData, sumRange, TABLE_TOTAL, tableKey, FieldDataProvider, useFieldData } from "@/lib/field-data";
 
 describe("Field sample data", () => {
+  beforeEach(() => localStorage.clear());
   it("contains the full station, zone, row and table hierarchy", () => {
     const data = seedData();
     expect(Object.keys(data)).toHaveLength(STATIONS * ZONES.length * ROWS * TABLES);
@@ -23,6 +24,7 @@ describe("Field sample data", () => {
 });
 
 describe("Explicit progress save", () => {
+  beforeEach(() => localStorage.clear());
   it("keeps edits pending until saved and commits all edited locations", () => {
     const { result } = renderHook(() => useFieldData(), { wrapper: FieldDataProvider });
     const first = tableKey(0, 0, 0, 0);
