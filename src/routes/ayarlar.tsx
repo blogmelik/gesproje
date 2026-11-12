@@ -1,15 +1,17 @@
 import React from 'react';
 import { createFileRoute } from "@tanstack/react-router";
-import { Save, PanelLeft, PanelBottom, Lock, DownloadCloud, LogOut } from "lucide-react";
+import { Save, PanelLeft, PanelBottom, Lock, DownloadCloud, LogOut, CloudUpload, Database } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useProjectSettings } from "@/lib/project-settings";
 import { useAppearanceSettings } from "@/lib/appearance-settings";
 import { useI18n, LANGUAGES, type Language } from "@/lib/i18n";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { supabase } from "@/lib/supabase";
+import { getSavedFirebaseConfig, saveFirebaseConfig } from "@/lib/firebase";
+import { BackupDialog } from "@/components/backup-dialog";
 
 export const Route = createFileRoute("/ayarlar")({
   head: () => ({ meta: [
@@ -30,21 +32,37 @@ function SettingsPage() {
   const [newPin, setNewPin] = React.useState("");
   const isElectron = window.navigator.userAgent.toLowerCase().includes("electron");
 
-  const updatePin = async () => {
+  const [firebaseSnippet, setFirebaseSnippet] = React.useState(() => {
+    const conf = getSavedFirebaseConfig();
+    return conf ? JSON.stringify(conf, null, 2) : "";
+  });
+  const [hasFirebase, setHasFirebase] = React.useState(() => Boolean(getSavedFirebaseConfig()));
+
+  const handleSaveFirebase = () => {
+    if (!firebaseSnippet.trim()) {
+      localStorage.removeItem("ges-firebase-config");
+      setHasFirebase(false);
+      toast.success("Firebase yapılandırması kaldırıldı.");
+      return;
+    }
+
+    const ok = saveFirebaseConfig(firebaseSnippet);
+    if (ok) {
+      setHasFirebase(true);
+      toast.success("Google Firebase bilgileri başarıyla kaydedildi!");
+    } else {
+      toast.error("Geçersiz Firebase kodu! Lütfen console.firebase.google.com üzerindeki config nesnesini yapıştırın.");
+    }
+  };
+
+  const updatePin = () => {
     if (newPin.length < 4) {
       toast.error("PIN en az 4 haneli olmalıdır.");
       return;
     }
-    try {
-      const { error } = await supabase
-        .from("sync_store").upsert({ key: "device-demo-security", value: { pin: newPin } });
-      if (error) throw error;
-      localStorage.setItem("ges-app-pin", newPin);
-      toast.success("PIN kodu başarıyla güncellendi.");
-      setNewPin("");
-    } catch (e) {
-      toast.error("PIN güncellenemedi.");
-    }
+    localStorage.setItem("ges-app-pin", newPin);
+    toast.success("PIN kodu başarıyla güncellendi.");
+    setNewPin("");
   };
 
   const handleLockDevice = () => {
@@ -126,6 +144,52 @@ function SettingsPage() {
     )}
 
     <section className="max-w-2xl space-y-5 mt-10 p-6 border rounded-lg bg-card">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Database className="size-5 text-primary" />
+            Yedekleme & Geri Yükleme
+          </h3>
+          <p className="text-sm text-muted-foreground">Tüm saha verilerini Google Firebase bulutuna veya çevrimdışı dosya (.ges) olarak yedekleyin.</p>
+        </div>
+        <BackupDialog>
+          <Button className="shrink-0 gap-2">
+            <Database className="size-4" />
+            Yedekleme Menüsü
+          </Button>
+        </BackupDialog>
+      </div>
+    </section>
+
+    <section className="max-w-2xl space-y-4 mt-6 p-6 border rounded-lg bg-card">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CloudUpload className="size-5 text-primary" />
+          <h3 className="text-lg font-semibold">Google Firebase Bulut Yapılandırması</h3>
+        </div>
+        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${hasFirebase ? "bg-success/15 text-success" : "bg-amber-500/15 text-amber-500"}`}>
+          {hasFirebase ? "Bağlandı (Aktif)" : "Yapılandırılmadı"}
+        </span>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Google Firebase konsolundan (console.firebase.google.com) aldığınız Web SDK config kodunu buraya yapıştırıp kaydedin.
+      </p>
+      <Textarea 
+        rows={6}
+        placeholder={`const firebaseConfig = {\n  apiKey: "AIzaSy...",\n  projectId: "ges-proje-...",\n  appId: "1:..."\n};`}
+        value={firebaseSnippet}
+        onChange={(e) => setFirebaseSnippet(e.target.value)}
+        className="font-mono text-xs"
+      />
+      <div className="flex justify-end">
+        <Button onClick={handleSaveFirebase} className="gap-2">
+          <Save className="size-4" />
+          Firebase Bilgilerini Kaydet
+        </Button>
+      </div>
+    </section>
+
+    <section className="max-w-2xl space-y-5 mt-6 p-6 border rounded-lg bg-card">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h3 className="text-lg font-semibold flex items-center gap-2">

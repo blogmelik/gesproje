@@ -1,32 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
 
 export function PinScreen({ children }: { children: React.ReactNode }) {
   const [unlocked, setUnlocked] = useState(() => {
     return localStorage.getItem("ges-unlocked-device") === "true" || sessionStorage.getItem("ges-unlocked") === "true";
   });
   const [pin, setPin] = useState("");
-  const [expectedPin, setExpectedPin] = useState<string>(() => localStorage.getItem("ges-app-pin") || "1984");
-
-  useEffect(() => {
-    // Fetch latest PIN from Supabase silently on load
-    const fetchPin = async () => {
-      try {
-        const { data } = await supabase.from("sync_store").select("value").eq("key", "device-demo-security").single();
-        if (data && data.value && data.value.pin) {
-          localStorage.setItem("ges-app-pin", data.value.pin);
-          setExpectedPin(data.value.pin);
-        }
-      } catch (e) {
-        console.error("PIN sync failed, using local", e);
-      }
-    };
-    fetchPin();
-  }, []);
+  const expectedPin = localStorage.getItem("ges-app-pin") || "1984";
 
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();

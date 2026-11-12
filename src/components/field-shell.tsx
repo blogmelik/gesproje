@@ -1,16 +1,14 @@
 import ozgunLogo from "@/assets/ozgun-logo-text.png";
-import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
-import CryptoJS from "crypto-js";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { LayoutDashboard, ClipboardPen, ListChecks, Moon, Sun, PanelLeftClose, PanelLeftOpen, Menu, Settings, HardHat, CloudSun, Wind, CloudCheck, CloudUpload, RefreshCw } from "lucide-react";
+import { LayoutDashboard, ClipboardPen, ListChecks, Moon, Sun, PanelLeftClose, PanelLeftOpen, Menu, Settings, HardHat, CloudSun, Wind } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FieldDataProvider, useFieldData } from "@/lib/field-data";
+import { FieldDataProvider } from "@/lib/field-data";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ProjectSettingsProvider, useProjectSettings } from "@/lib/project-settings";
 import { AppearanceProvider, useAppearanceSettings } from "@/lib/appearance-settings";
 import { LanguageProvider, useI18n, LANGUAGES } from "@/lib/i18n";
+import { BackupDialog } from "@/components/backup-dialog";
 
 
 const navigation = [
@@ -87,143 +85,17 @@ function FieldShellContent({ children }: { children: ReactNode }) {
     </FieldDataProvider>
   );
 }
-/** Desktop-only status chips: dummy site weather + local sync state. */
+/** Header indicators: weather + manual cloud & local backup dialog */
 function HeaderIndicators() {
   const { t } = useI18n();
-  const { pendingCount } = useFieldData();
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error' | 'downloading'>('idle');
-  const [lastSyncedHash, setLastSyncedHash] = useState('');
 
-  // Is this running in electron or desktop app protocol?
-  const isElectron = typeof window !== 'undefined' && (window.navigator.userAgent.toLowerCase().includes('electron') || window.location.protocol === 'app:');
-
-  const fetchCloudData = async (isStartup = false) => {
-    setSyncStatus('downloading');
-    try {
-      const { data, error } = await supabase.from('sync_store').select('value').eq('key', 'device-demo').single();
-      if (error) throw error;
+  return (
+    <div className="hidden shrink-0 items-center gap-2 lg:flex">
+      <BackupDialog />
       
-      if (data && data.value) {
-        // Decrypt payload
-        try {
-          if (typeof data.value === 'string' && data.value.startsWith('U2FsdGVk')) {
-            const bytes = CryptoJS.AES.decrypt(data.value, "OzgunInsaat2026SahaTakip$!");
-            data.value = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-          }
-        } catch(e) { console.error("Decryption failed", e); }
-
-        if (!isElectron) {
-          // Mobil uygulama SADECE kilitleri indirir (cunku sahadaki veriler ezelden beridir mobilin kendisindedir, offline veri kaybolmasin diye progress indirilmez)
-          if (data.value.locked) localStorage.setItem("ges-locked-v1", data.value.locked);
-          // Cihazda hic yerel veri yoksa buluttan baslangic verisini al
-          if (!localStorage.getItem("ges-progress-v1") && data.value.progress) {
-            localStorage.setItem("ges-progress-v1", data.value.progress);
-          }
-        } else {
-          // PC uygulamasi tum verileri indirir
-          if (data.value.progress) localStorage.setItem("ges-progress-v1", data.value.progress);
-          if (data.value.locked) localStorage.setItem("ges-locked-v1", data.value.locked);
-          if (data.value.faults) localStorage.setItem("ges-faults", data.value.faults);
-          if (data.value.settings) localStorage.setItem("ges-settings", data.value.settings);
-          if (data.value.teams) localStorage.setItem("ges-teams", data.value.teams);
-        }
-        
-        if (!isStartup) {
-          toast.success("Veriler yenilendi!");
-          setTimeout(() => window.location.reload(), 500);
-        }
-      }
-    } catch (err) {
-      console.error("Fetch error:", err);
-      if (!isStartup) toast.warning("Bulut sunucusuna ulaşılamadı. (Çevrimdışı moddasınız, yerel verileriniz korunuyor)");
-      setSyncStatus('error');
-    }
-  };
-
-  useEffect(() => {
-    // Tum cihazlarda ilk acilista calisir.
-    // PC tum veriyi cekerken, Mobil sadece merkezden gelen 'kilitleri' ceker
-    if (!sessionStorage.getItem('startupSyncDone')) {
-      sessionStorage.setItem('startupSyncDone', 'true');
-      fetchCloudData(true);
-    }
-  }, [isElectron]);
-
-  useEffect(() => {
-    const payloadStr = JSON.stringify({
-      progress: localStorage.getItem("ges-progress-v1"),
-      faults: localStorage.getItem("ges-faults"),
-      settings: localStorage.getItem("ges-settings"),
-      teams: localStorage.getItem("ges-teams"),
-      locked: localStorage.getItem("ges-locked-v1")
-    });
-
-    if (payloadStr === lastSyncedHash) return;
-    if (pendingCount > 0) return;
-
-    const autoSync = async () => {
-      setSyncStatus(prev => prev === 'downloading' ? prev : 'syncing');
-      try {
-        // Encrypt payload
-        const encryptedPayload = CryptoJS.AES.encrypt(payloadStr, "OzgunInsaat2026SahaTakip$!").toString();
-
-        const { error } = await supabase
-          .from('sync_store')
-          .upsert({ 
-            key: 'device-demo', 
-            value: encryptedPayload,
-            updated_at: new Date().toISOString()
-          });
-
-        if (error) throw error;
-        setSyncStatus('idle');
-        setLastSyncedHash(payloadStr);
-      } catch (err) {
-        console.error("Auto-sync error:", err);
-        setSyncStatus('error');
-        setLastSyncedHash(payloadStr); // prevent continuous 2s retry loop until payload changes
-      }
-    };
-
-    const timer = setTimeout(autoSync, 2000);
-    return () => clearTimeout(timer);
-  }, [pendingCount, lastSyncedHash]);
-
-
-  return <div className="hidden shrink-0 items-center gap-2 lg:flex">
-    {isElectron && (
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={() => fetchCloudData(false)}
-        disabled={syncStatus === 'downloading'}
-        className={`h-8 gap-1.5 px-2.5 text-xs font-medium ${syncStatus === 'downloading' ? 'animate-pulse opacity-50' : ''}`}
-        title="Verileri Yenile"
-      >
-        <RefreshCw className={`size-4 text-primary ${syncStatus === 'downloading' ? 'animate-spin' : ''}`} />
-        <span>Yenile</span>
-      </Button>
-    )}
-    
-    <div title={t("Saha Hava Durumu")} className="flex h-8 items-center gap-1.5 rounded-sm border px-2.5 text-xs text-muted-foreground">
-      <CloudSun className="size-4 text-primary" /><span className="font-semibold tabular-nums text-foreground">34°C</span><Wind className="size-3.5" /><span className="tabular-nums">12 km/h</span>
+      <div title={t("Saha Hava Durumu")} className="flex h-8 items-center gap-1.5 rounded-sm border px-2.5 text-xs text-muted-foreground">
+        <CloudSun className="size-4 text-primary" /><span className="font-semibold tabular-nums text-foreground">34°C</span><Wind className="size-3.5" /><span className="tabular-nums">12 km/h</span>
+      </div>
     </div>
-    
-    <div 
-      title={syncStatus === 'syncing' ? "Buluta gönderiliyor..." : syncStatus === 'error' ? "Bulut Sunucusuna Ulaşılamıyor (Yerel verileriniz korunmaktadır)" : pendingCount > 0 ? "Kaydedilmeyi Bekliyor" : "Bulutla Eşitlendi"} 
-      className={`flex h-8 items-center gap-1.5 rounded-sm border px-2.5 text-xs font-medium 
-        ${syncStatus === 'syncing' ? 'text-blue-500 animate-pulse' : syncStatus === 'error' ? 'text-amber-500 border-amber-500/30' : pendingCount > 0 ? 'text-amber-500' : 'text-success'}`}
-    >
-      {syncStatus === 'syncing' ? <CloudUpload className="size-4 animate-pulse" /> : 
-       syncStatus === 'error' ? <CloudUpload className="size-4 text-amber-500" /> : 
-       pendingCount > 0 ? <CloudUpload className="size-4 text-amber-500" /> : 
-       <CloudCheck className="size-4 text-success" />}
-      
-      <span>
-        {syncStatus === 'syncing' ? "Eşitleniyor..." : 
-         syncStatus === 'error' ? "Çevrimdışı" : 
-         pendingCount > 0 ? `Taslak (${pendingCount})` : "Eşitlendi"}
-      </span>
-    </div>
-  </div>;
+  );
 }
