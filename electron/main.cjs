@@ -28,7 +28,8 @@ function createWindow() {
     icon: path.join(__dirname, '../public/app-icon.png'),
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false
+      contextIsolation: false,
+      webSecurity: false
     }
   });
 

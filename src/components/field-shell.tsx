@@ -135,7 +135,7 @@ function HeaderIndicators() {
       }
     } catch (err) {
       console.error("Fetch error:", err);
-      if (!isStartup) toast.error("Buluttan veri cekilemedi.");
+      if (!isStartup) toast.warning("Bulut sunucusuna ulaşılamadı. (Çevrimdışı moddasınız, yerel verileriniz korunuyor)");
       setSyncStatus('error');
     }
   };
@@ -210,18 +210,18 @@ function HeaderIndicators() {
     </div>
     
     <div 
-      title={syncStatus === 'syncing' ? "Buluta gönderiliyor..." : syncStatus === 'error' ? "Eşitleme Hatası" : pendingCount > 0 ? "Kaydedilmeyi Bekliyor" : "Bulutla Eşitlendi"} 
+      title={syncStatus === 'syncing' ? "Buluta gönderiliyor..." : syncStatus === 'error' ? "Bulut Sunucusuna Ulaşılamıyor (Yerel verileriniz korunmaktadır)" : pendingCount > 0 ? "Kaydedilmeyi Bekliyor" : "Bulutla Eşitlendi"} 
       className={`flex h-8 items-center gap-1.5 rounded-sm border px-2.5 text-xs font-medium 
-        ${syncStatus === 'syncing' ? 'text-blue-500 animate-pulse' : syncStatus === 'error' ? 'text-destructive' : pendingCount > 0 ? 'text-amber-500' : 'text-success'}`}
+        ${syncStatus === 'syncing' ? 'text-blue-500 animate-pulse' : syncStatus === 'error' ? 'text-amber-500 border-amber-500/30' : pendingCount > 0 ? 'text-amber-500' : 'text-success'}`}
     >
-      {syncStatus === 'syncing' ? <CloudUpload className="size-4" /> : 
-       syncStatus === 'error' ? <CloudUpload className="size-4" /> : 
-       pendingCount > 0 ? <CloudUpload className="size-4" /> : 
-       <CloudCheck className="size-4" />}
+      {syncStatus === 'syncing' ? <CloudUpload className="size-4 animate-pulse" /> : 
+       syncStatus === 'error' ? <CloudUpload className="size-4 text-amber-500" /> : 
+       pendingCount > 0 ? <CloudUpload className="size-4 text-amber-500" /> : 
+       <CloudCheck className="size-4 text-success" />}
       
       <span>
         {syncStatus === 'syncing' ? "Eşitleniyor..." : 
-         syncStatus === 'error' ? "Bağlantı Yok" : 
+         syncStatus === 'error' ? "Çevrimdışı" : 
          pendingCount > 0 ? `Taslak (${pendingCount})` : "Eşitlendi"}
       </span>
     </div>
