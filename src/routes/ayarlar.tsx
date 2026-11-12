@@ -1,6 +1,6 @@
 import React from 'react';
 import { createFileRoute } from "@tanstack/react-router";
-import { Save, PanelLeft, PanelBottom, Lock, DownloadCloud } from "lucide-react";
+import { Save, PanelLeft, PanelBottom, Lock, DownloadCloud, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { useProjectSettings } from "@/lib/project-settings";
 import { useAppearanceSettings } from "@/lib/appearance-settings";
 import { useI18n, LANGUAGES, type Language } from "@/lib/i18n";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/ayarlar")({
   head: () => ({ meta: [
@@ -30,17 +31,26 @@ function SettingsPage() {
   const isElectron = window.navigator.userAgent.toLowerCase().includes("electron");
 
   const updatePin = async () => {
-    if (newPin.length < 4) return toast.error("PIN en az 4 haneli olmalidir.");
+    if (newPin.length < 4) {
+      toast.error("PIN en az 4 haneli olmalıdır.");
+      return;
+    }
     try {
-      const { error } = await import('@/lib/supabase').then(m => m.supabase)
+      const { error } = await supabase
         .from("sync_store").upsert({ key: "device-demo-security", value: { pin: newPin } });
       if (error) throw error;
       localStorage.setItem("ges-app-pin", newPin);
-      toast.success("PIN kodu basariyla guncellendi.");
+      toast.success("PIN kodu başarıyla güncellendi.");
       setNewPin("");
     } catch (e) {
-      toast.error("PIN guncellenemedi.");
+      toast.error("PIN güncellenemedi.");
     }
+  };
+
+  const handleLockDevice = () => {
+    localStorage.removeItem("ges-unlocked-device");
+    sessionStorage.removeItem("ges-unlocked");
+    window.location.reload();
   };
 
   const checkUpdates = () => {
@@ -127,6 +137,22 @@ function SettingsPage() {
         <Button onClick={checkUpdates} className="shrink-0 gap-2">
           <DownloadCloud className="size-4" />
           Güncellemeyi İndir
+        </Button>
+      </div>
+    </section>
+
+    <section className="max-w-2xl space-y-5 mt-6 p-6 border border-border rounded-lg bg-card">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <LogOut className="size-5 text-muted-foreground" />
+            Oturumu Kapat / Kilitle
+          </h3>
+          <p className="text-sm text-muted-foreground">Uygulamayı PIN korumalı kilit ekranına döndürür.</p>
+        </div>
+        <Button variant="outline" onClick={handleLockDevice} className="shrink-0 gap-2">
+          <LogOut className="size-4" />
+          Kilitle
         </Button>
       </div>
     </section>

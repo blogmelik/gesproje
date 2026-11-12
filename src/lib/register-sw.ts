@@ -16,9 +16,12 @@ export const SW_REGISTER_SCRIPT = `(function(){
 
 export async function registerSW() {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
-  if (import.meta.env.DEV || window.self !== window.top || new URLSearchParams(window.location.search).get("sw") === "off") {
-    const rs = await navigator.serviceWorker.getRegistrations();
-    rs.forEach(r => r.unregister());
+  const isCustomScheme = window.location.protocol === "app:" || window.location.protocol === "file:" || window.location.protocol === "capacitor:" || window.navigator.userAgent.toLowerCase().includes("electron");
+  if (isCustomScheme || import.meta.env.DEV || window.self !== window.top || new URLSearchParams(window.location.search).get("sw") === "off") {
+    try {
+      const rs = await navigator.serviceWorker.getRegistrations();
+      rs.forEach(r => r.unregister());
+    } catch { /* ignore */ }
     return;
   }
   try {

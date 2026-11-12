@@ -3,7 +3,7 @@ import { ChevronRight, Folder, FolderOpen, Table2, Lock, Unlock, TriangleAlert }
 import { Input } from "@/components/ui/input";
 import { FieldProgress } from "@/components/field-progress";
 import { useI18n } from "@/lib/i18n";
-import { ITEMS, STATIONS, ZONES, ROWS, TABLES, TABLE_TOTAL, tableKey, pct, textTone, sumRange, type Data } from "@/lib/field-data";
+import { ITEMS, STATIONS, ZONES, ROWS, TABLES, TABLE_TOTAL, tableKey, pct, textTone, sumRange, useFieldData, type Data } from "@/lib/field-data";
 
 type Props = {
   data: Data;
@@ -21,6 +21,8 @@ type Props = {
 /** Desktop-only split pane: explorer-style tree (30%) + compact spreadsheet entry (70%). */
 export function DesktopProgressPane({ data, stationPct, station, zone, row, onSelect, setItem, reported, faultsReady, onFault }: Props) {
   const { t } = useI18n();
+  const { locks = {}, toggleLock } = useFieldData();
+  const isElectron = typeof window !== 'undefined' && (window.navigator.userAgent.toLowerCase().includes('electron') || window.location.protocol === 'app:');
   const [openStations, setOpenStations] = useState<Set<number>>(() => new Set(station === null ? [] : [station]));
   const [openZones, setOpenZones] = useState<Set<string>>(() => new Set(station !== null && zone !== null ? [`${station}-${zone}`] : []));
   const [openRows, setOpenRows] = useState<Set<string>>(() => new Set());
@@ -125,7 +127,7 @@ export function DesktopProgressPane({ data, stationPct, station, zone, row, onSe
                               {locks[key] ? <Lock className="size-4" /> : <Unlock className="size-4" />}
                             </button>
                           ) : (
-                            locks[key] && <Lock className="size-4 text-destructive" title="Kilitli" />
+                            locks[key] && <span title="Kilitli"><Lock className="size-4 text-destructive" /></span>
                           )}
                           <span>{tableName}</span>
                         </div>

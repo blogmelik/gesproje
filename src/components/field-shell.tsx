@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import CryptoJS from "crypto-js";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { LayoutDashboard, ClipboardPen, ListChecks, Moon, Sun, PanelLeftClose, PanelLeftOpen, Menu, Settings, HardHat, CloudSun, Wind, CloudCheck, CloudUpload } from "lucide-react";
+import { LayoutDashboard, ClipboardPen, ListChecks, Moon, Sun, PanelLeftClose, PanelLeftOpen, Menu, Settings, HardHat, CloudSun, Wind, CloudCheck, CloudUpload, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FieldDataProvider, useFieldData } from "@/lib/field-data";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -94,8 +94,8 @@ function HeaderIndicators() {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error' | 'downloading'>('idle');
   const [lastSyncedHash, setLastSyncedHash] = useState('');
 
-  // Is this running in electron?
-  const isElectron = window.navigator.userAgent.toLowerCase().includes('electron');
+  // Is this running in electron or desktop app protocol?
+  const isElectron = typeof window !== 'undefined' && (window.navigator.userAgent.toLowerCase().includes('electron') || window.location.protocol === 'app:');
 
   const fetchCloudData = async (isStartup = false) => {
     setSyncStatus('downloading');
@@ -115,6 +115,10 @@ function HeaderIndicators() {
         if (!isElectron) {
           // Mobil uygulama SADECE kilitleri indirir (cunku sahadaki veriler ezelden beridir mobilin kendisindedir, offline veri kaybolmasin diye progress indirilmez)
           if (data.value.locked) localStorage.setItem("ges-locked-v1", data.value.locked);
+          // Cihazda hic yerel veri yoksa buluttan baslangic verisini al
+          if (!localStorage.getItem("ges-progress-v1") && data.value.progress) {
+            localStorage.setItem("ges-progress-v1", data.value.progress);
+          }
         } else {
           // PC uygulamasi tum verileri indirir
           if (data.value.progress) localStorage.setItem("ges-progress-v1", data.value.progress);
@@ -124,8 +128,10 @@ function HeaderIndicators() {
           if (data.value.teams) localStorage.setItem("ges-teams", data.value.teams);
         }
         
-        if (!isStartup) toast.success("Veriler yenilendi!");
-        setTimeout(() => window.location.reload(), isStartup ? 100 : 800);
+        if (!isStartup) {
+          toast.success("Veriler yenilendi!");
+          setTimeout(() => window.location.reload(), 500);
+        }
       }
     } catch (err) {
       console.error("Fetch error:", err);
@@ -156,10 +162,8 @@ function HeaderIndicators() {
     if (pendingCount > 0) return;
 
     const autoSync = async () => {
-      if (syncStatus === 'downloading') return;
-      setSyncStatus('syncing');
+      setSyncStatus(prev => prev === 'downloading' ? prev : 'syncing');
       try {
-        
         // Encrypt payload
         const encryptedPayload = CryptoJS.AES.encrypt(payloadStr, "OzgunInsaat2026SahaTakip$!").toString();
 
@@ -167,7 +171,7 @@ function HeaderIndicators() {
           .from('sync_store')
           .upsert({ 
             key: 'device-demo', 
-            value: encryptedPayload, // Save as encrypted string instead of JSON object
+            value: encryptedPayload,
             updated_at: new Date().toISOString()
           });
 
@@ -177,12 +181,13 @@ function HeaderIndicators() {
       } catch (err) {
         console.error("Auto-sync error:", err);
         setSyncStatus('error');
+        setLastSyncedHash(payloadStr); // prevent continuous 2s retry loop until payload changes
       }
     };
 
     const timer = setTimeout(autoSync, 2000);
     return () => clearTimeout(timer);
-  }, [pendingCount, lastSyncedHash, syncStatus]);
+  }, [pendingCount, lastSyncedHash]);
 
 
   return <div className="hidden shrink-0 items-center gap-2 lg:flex">

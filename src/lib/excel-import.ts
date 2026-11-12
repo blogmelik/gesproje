@@ -1,4 +1,5 @@
 import { ITEMS, ROWS, STATIONS, TABLES, ZONES, tableKey } from "@/lib/field-data";
+import { saveOrShareExcel } from "@/lib/excel-export";
 
 export const IMPORT_HEADERS = ["İstasyon", "Bölge", "Sıra", "Masa", ...ITEMS.map(i => i.name)];
 
@@ -47,5 +48,5 @@ export async function downloadTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([IMPORT_HEADERS, [1, "A", 1, 1, 24, 12, 12, 40, 56], [1, "A", 1, 2, 10, 0, 0, 0, 0]]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Veri");
-  XLSX.writeFile(wb, "saha_veri_sablonu.xlsx");
+  await saveOrShareExcel(wb, "saha_veri_sablonu.xlsx");
 }

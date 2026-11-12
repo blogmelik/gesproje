@@ -6,14 +6,13 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
 export function PinScreen({ children }: { children: React.ReactNode }) {
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem("ges-unlocked") === "true");
+  const [unlocked, setUnlocked] = useState(() => {
+    return localStorage.getItem("ges-unlocked-device") === "true" || sessionStorage.getItem("ges-unlocked") === "true";
+  });
   const [pin, setPin] = useState("");
-  const [expectedPin, setExpectedPin] = useState<string | null>(null);
+  const [expectedPin, setExpectedPin] = useState<string>(() => localStorage.getItem("ges-app-pin") || "1984");
 
   useEffect(() => {
-    const localPin = localStorage.getItem("ges-app-pin") || "1984"; // Default PIN is 1984
-    setExpectedPin(localPin);
-
     // Fetch latest PIN from Supabase silently on load
     const fetchPin = async () => {
       try {
@@ -31,8 +30,9 @@ export function PinScreen({ children }: { children: React.ReactNode }) {
 
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === expectedPin) {
+    if (pin.trim() === expectedPin.trim()) {
       sessionStorage.setItem("ges-unlocked", "true");
+      localStorage.setItem("ges-unlocked-device", "true");
       setUnlocked(true);
     } else {
       toast.error("Hatalı PIN kodu!");

@@ -12,6 +12,7 @@ import { ITEMS, STATIONS, ZONES } from "@/lib/field-data";
 import { useI18n, translate, type Language } from "@/lib/i18n";
 import { useTeams } from "@/lib/teams";
 import { ExcelImportCard } from "@/components/excel-import-card";
+import { saveOrShareExcel } from "@/lib/excel-export";
 import { faultStatus, useFaultReports, type FaultReport, type FaultStatus } from "@/lib/fault-reports";
 
 export const Route = createFileRoute("/revizyon")({
@@ -94,30 +95,13 @@ function RevisionPage() {
       sheet["!autofilter"] = { ref: `A1:N${data.length + 1}` };
       const book = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(book, sheet, t("Hata Raporu").slice(0, 31));
-        
-        // Mobile-friendly download via Web Share API
-        try {
-          const wbout = XLSX.write(book, { bookType: 'xlsx', type: 'array' });
-          const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-          const file = new File([blob], "saha_hata_raporu.xlsx", { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-          
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: "Saha Hata Raporu",
-              text: "Saha Hata Raporu ektedir."
-            });
-            toast.success(t("Rapor paylaşıldı"), { description: t("{n} kayıt aktarıldı.", { n: rows.length }) });
-            return;
-          }
-        } catch (shareErr) {
-          console.error("Share failed", shareErr);
-        }
-        
-        // Fallback for Desktop
-        XLSX.writeFile(book, "saha_hata_raporu.xlsx");
-        toast.success(t("Excel indirildi"), { description: t("saha_hata_raporu.xlsx — {n} kayıt aktarıldı.", { n: rows.length }) });
-      } catch (err) { console.error(err); toast.error(t("Excel oluşturulamadı"), { description: t("Lütfen tekrar deneyin.") }); }
+      
+      await saveOrShareExcel(book, "saha_hata_raporu.xlsx");
+      toast.success(t("Excel indirildi"), { description: t("saha_hata_raporu.xlsx — {n} kayıt aktarıldı.", { n: rows.length }) });
+    } catch (err) {
+      console.error(err);
+      toast.error(t("Excel oluşturulamadı"), { description: t("Lütfen tekrar deneyin.") });
+    }
   }
 
   const filter = (label: string, value: string, onChange: (v: string) => void, options: [string, string][]) =>

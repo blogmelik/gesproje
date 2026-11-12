@@ -25,6 +25,44 @@ export function buildExportRows(data: Data) {
   return { summary, detail };
 }
 
+export async function saveOrShareExcel(wb: any, filename: string): Promise<boolean> {
+  const XLSX = await import("xlsx");
+  const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const file = new File([blob], filename, { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+  if (typeof navigator !== "undefined" && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: filename,
+        text: `${filename} raporu ektedir.`,
+      });
+      return true;
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") return false;
+      console.warn("navigator.share failed, fallback to download", err);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1000);
+    return true;
+  }
+
+  XLSX.writeFile(wb, filename);
+  return true;
+}
+
 export async function exportProgressExcel(data: Data) {
   const XLSX = await import("xlsx");
   const { summary, detail } = buildExportRows(data);
@@ -37,6 +75,6 @@ export async function exportProgressExcel(data: Data) {
   s2["!cols"] = headers.map(h => ({ wch: Math.max(9, h.length + 2) }));
   s2["!autofilter"] = { ref: `A1:J${detail.length + 1}` };
   XLSX.utils.book_append_sheet(wb, s2, "Detaylı Liste");
-  XLSX.writeFile(wb, "saha_genel_ilerleme.xlsx");
+  await saveOrShareExcel(wb, "saha_genel_ilerleme.xlsx");
   return detail.length;
 }
