@@ -10,6 +10,7 @@ import { AppearanceProvider, useAppearanceSettings } from "@/lib/appearance-sett
 import { LanguageProvider, useI18n, LANGUAGES } from "@/lib/i18n";
 import { BackupDialog } from "@/components/backup-dialog";
 import { getPendingSubmissionCount, fetchSubmissionsFromCloud, getLocalSubmissions, approveSubmission } from "@/lib/submissions";
+import { APP_VERSION, BUILD_NUMBER } from "@/lib/version";
 
 
 const navigation = [
@@ -163,7 +164,7 @@ function FieldShellContent({ children }: { children: ReactNode }) {
               <Navigation collapsed={collapsed} />
               <SidebarFooter collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
             </aside>}
-            <main className={`flex min-w-0 flex-1 flex-col px-4 pt-28 sm:px-6 lg:px-6 lg:pt-20 ${bottom ? "pb-[calc(6rem_+_env(safe-area-inset-bottom))]" : "pb-0"}`}><div className={`min-h-[calc(100dvh-11rem)] ${bottom ? "w-full" : "mx-auto w-full max-w-6xl lg:max-w-none"}`}>{children}</div><footer className="mt-32 py-4 text-center text-[10px] font-light tracking-widest text-muted-foreground/40"><p>{t("© 2026 | Designed By OUZ51 | Tüm hakları saklıdır.")}</p></footer></main>
+            <main className={`flex min-w-0 flex-1 flex-col px-4 pt-28 sm:px-6 lg:px-6 lg:pt-20 ${bottom ? "pb-[calc(6rem_+_env(safe-area-inset-bottom))]" : "pb-0"}`}><div className={`min-h-[calc(100dvh-11rem)] ${bottom ? "w-full" : "mx-auto w-full max-w-6xl lg:max-w-none"}`}>{children}</div><footer className="mt-32 py-4 text-center text-[10px] font-light tracking-widest text-muted-foreground/40"><p>{t("© 2026 | Designed By OUZ51 | v{version} (Derleme #{build})", { version: APP_VERSION, build: BUILD_NUMBER })}</p></footer></main>
           </div>
           {!bottom && <Sheet open={mobileMenu} onOpenChange={setMobileMenu}><SheetContent side="left" className="w-72 border-sidebar-active bg-sidebar px-0 pt-12 text-sidebar-foreground"><SheetTitle className="mb-6 px-6 text-sm text-sidebar-foreground">{t("Saha Yönetimi")}</SheetTitle><Navigation onNavigate={() => setMobileMenu(false)} /></SheetContent></Sheet>}
           {bottom && <div className="fixed inset-x-0 bottom-0 z-40 border-t border-sidebar-active bg-sidebar text-sidebar-foreground"><Navigation bottom /></div>}

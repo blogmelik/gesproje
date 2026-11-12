@@ -11,6 +11,7 @@ import { useI18n, LANGUAGES, type Language } from "@/lib/i18n";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useFieldData, type SiteConfig } from "@/lib/field-data";
 import { BackupDialog } from "@/components/backup-dialog";
+import { APP_VERSION, BUILD_NUMBER, RELEASE_DATE } from "@/lib/version";
 
 export const Route = createFileRoute("/ayarlar")({
   head: () => ({ meta: [
@@ -326,6 +327,12 @@ function SettingsPage() {
                 ? "Windows Masaüstü uygulamasının (.exe) en son güncel sürümünü indirin."
                 : "Android Mobil uygulamasının (.apk) en son güncel sürümünü indirin."}
             </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                v{APP_VERSION} (Derleme: #{BUILD_NUMBER})
+              </span>
+              <span className="text-xs text-muted-foreground">Tarih: {RELEASE_DATE}</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={checkUpdates} className="shrink-0 gap-2">
