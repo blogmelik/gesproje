@@ -40,6 +40,33 @@ export function saveLocalSubmissions(list: FieldSubmission[]) {
   }
 }
 
+/** Fast upsert for a single incoming submission from real-time SSE stream */
+export function upsertLocalSubmission(sub: FieldSubmission): { updated: boolean; isNew: boolean } {
+  try {
+    const list = getLocalSubmissions();
+    const existingIdx = list.findIndex(s => s.id === sub.id);
+
+    if (existingIdx >= 0 && list[existingIdx]) {
+      const existing = list[existingIdx]!;
+      // Keep existing status if it was already reviewed (approved or rejected) locally
+      list[existingIdx] = {
+        ...sub,
+        status: existing.status,
+        reviewedAt: existing.reviewedAt || sub.reviewedAt,
+        reviewedBy: existing.reviewedBy || sub.reviewedBy
+      };
+      saveLocalSubmissions(list);
+      return { updated: true, isNew: false };
+    } else {
+      list.unshift(sub);
+      saveLocalSubmissions(list);
+      return { updated: true, isNew: true };
+    }
+  } catch {
+    return { updated: false, isNew: false };
+  }
+}
+
 export function getPendingSubmissionCount(): number {
   return getLocalSubmissions().filter(s => s.status === "pending").length;
 }

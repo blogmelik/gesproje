@@ -55,58 +55,83 @@ function ReportPage() {
   const step = station === null ? 1 : zone === null ? 2 : row === null ? 3 : 4;
   const title = t(step === 1 ? "İstasyon Seçimi" : step === 2 ? "Bölge Seçimi" : step === 3 ? "Sıra Seçimi" : "Masa İmalatları");
 
-  function backTo(level: number) {
-    if (level <= 1) setStation(null);
-    if (level <= 2) setZone(null);
-    setRow(null);
-  }
-
   function prefixPct(prefix: string) {
     const summary = sumRange(data, key => key.startsWith(prefix), items, tableTotal);
     return pct(summary.done, summary.total);
   }
 
-  // Otomatik bulut eşitlemesi: Masada veri girildiğinde 1.5 sn sonra arka planda merkeze aktarır
+  const performSync = async (s: number, z: number, r: number) => {
+    try {
+      const rowChanges: Data = {};
+      for (let tIdx = 0; tIdx < tables; tIdx++) {
+        const k = tableKey(s, z, r, tIdx);
+        const currentVal = dataRef.current[k];
+        if (currentVal) {
+          rowChanges[k] = currentVal;
+        }
+      }
+
+      const hasAnyData = Object.values(rowChanges).some(vals => vals.some(v => v > 0));
+      if (hasAnyData) {
+        setSyncStatus("syncing");
+        const res = await sendReportSubmission({
+          senderName: localStorage.getItem("ges-last-sender-name") || "Saha Ekibi",
+          station: s,
+          zone: ZONES[z] ?? "A",
+          row: r,
+          summaryText: `İstasyon ${s + 1} › Bölge ${ZONES[z] ?? "A"} › Sıra ${r + 1} (${tables} masa)`,
+          changes: rowChanges
+        });
+        if (res.success) {
+          setSyncStatus("synced");
+          setTimeout(() => setSyncStatus("idle"), 2000);
+        } else {
+          setSyncStatus("idle");
+        }
+      } else {
+        setSyncStatus("idle");
+      }
+    } catch (err) {
+      console.warn("Auto sync error:", err);
+      setSyncStatus("idle");
+    }
+  };
+
+  // Otomatik bulut eşitlemesi: Masada veri girildiğinde 250ms sonra anında arka planda merkeze aktarır
   const triggerAutoSync = (s: number, z: number, r: number) => {
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     setSyncStatus("syncing");
 
-    syncTimerRef.current = setTimeout(async () => {
-      try {
-        const rowChanges: Data = {};
-        for (let tIdx = 0; tIdx < tables; tIdx++) {
-          const k = tableKey(s, z, r, tIdx);
-          const currentVal = dataRef.current[k];
-          if (currentVal) {
-            rowChanges[k] = currentVal;
-          }
-        }
-
-        const hasAnyData = Object.values(rowChanges).some(vals => vals.some(v => v > 0));
-        if (hasAnyData) {
-          const res = await sendReportSubmission({
-            senderName: localStorage.getItem("ges-last-sender-name") || "Saha Ekibi",
-            station: s,
-            zone: ZONES[z] ?? "A",
-            row: r,
-            summaryText: `İstasyon ${s + 1} › Bölge ${ZONES[z] ?? "A"} › Sıra ${r + 1} (${tables} masa)`,
-            changes: rowChanges
-          });
-          if (res.success) {
-            setSyncStatus("synced");
-            setTimeout(() => setSyncStatus("idle"), 3000);
-          } else {
-            setSyncStatus("idle");
-          }
-        } else {
-          setSyncStatus("idle");
-        }
-      } catch (err) {
-        console.warn("Auto sync error:", err);
-        setSyncStatus("idle");
-      }
-    }, 800);
+    syncTimerRef.current = setTimeout(() => {
+      performSync(s, z, r);
+    }, 250);
   };
+
+  function backTo(level: number) {
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+      if (station !== null && zone !== null && row !== null) {
+        performSync(station, zone, row);
+      }
+    }
+    if (level <= 1) setStation(null);
+    if (level <= 2) setZone(null);
+    setRow(null);
+  }
+
+  // Sayfadan ayrılırken veya sekme değiştiğinde bekleyen aktarımı anında tamamla
+  useEffect(() => {
+    return () => {
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+        if (station !== null && zone !== null && row !== null) {
+          performSync(station, zone, row);
+        }
+      }
+    };
+  }, [station, zone, row]);
 
   const handleSetItem = (key: string, index: number, value: number) => {
     setItem(key, index, value);

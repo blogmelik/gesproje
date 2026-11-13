@@ -47,36 +47,9 @@ function InboxPage() {
     toast.info(next ? "Otomatik Onaylama (Canlı Akış) Aktif Edildi." : "Manuel Onaylama Moduna Geçildi.");
   };
 
-  // Otomatik bulut eşitlemesi: Sayfa açıldığında ve her 7 saniyede bir arka planda kontrol eder
+  // Otomatik bulut eşitlemesi: Canlı SSE akışı shell üzerinde dinlenir, burada olay tetiklenince anında yenilenir
   useEffect(() => {
     let mounted = true;
-
-    const silentSync = async () => {
-      try {
-        const res = await fetchSubmissionsFromCloud();
-        if (res.success && mounted) {
-          loadSubmissions();
-
-          // Eğer otomatik dahil et aktifse bekleyenleri anında projeye aktar
-          if (localStorage.getItem("ges-auto-approve-v1") === "true") {
-            const list = getLocalSubmissions().filter(s => s.status === "pending");
-            for (const sub of list) {
-              await approveSubmission(sub, (changes) => {
-                importData(changes);
-              });
-            }
-            if (list.length > 0) {
-              loadSubmissions();
-            }
-          }
-        }
-      } catch {
-        /* silent */
-      }
-    };
-
-    silentSync();
-    const interval = setInterval(silentSync, 7000);
 
     const onUpdate = () => {
       if (mounted) loadSubmissions();
@@ -85,10 +58,9 @@ function InboxPage() {
 
     return () => {
       mounted = false;
-      clearInterval(interval);
       window.removeEventListener("ges-submissions-updated", onUpdate);
     };
-  }, [importData]);
+  }, []);
 
   const handleCloudSync = async () => {
     setSyncing(true);
@@ -186,6 +158,10 @@ function InboxPage() {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-semibold tracking-tight">{t("Gelen Kutusu")}</h2>
+            <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 gap-1.5 py-0.5">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              Canlı Akış (Anlık SSE)
+            </Badge>
             {pendingList.length > 0 && (
               <Badge variant="destructive" className="rounded-full px-2.5 py-0.5 text-xs font-bold animate-pulse">
                 {pendingList.length} Yeni Rapor

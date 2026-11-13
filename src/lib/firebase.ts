@@ -80,6 +80,12 @@ export function resetFirebaseConfig() {
 }
 
 export function getFirebaseInstance(): { app: FirebaseApp; db: Firestore } | null {
+  // Only connect to Firebase if the user has explicitly provided a custom Firebase configuration
+  // Builtin fallback is a template placeholder, connecting to it causes timeouts and latency
+  if (!isCustomFirebaseConfig()) {
+    return null;
+  }
+
   const config = getSavedFirebaseConfig();
   if (!config) return null;
 
@@ -103,7 +109,7 @@ export async function uploadBackupToFirebase(payload: Record<string, unknown>): 
   if (!instance) {
     return {
       success: false,
-      message: "Bulut bağlantısı kurulamadı. Lütfen internet bağlantınızı kontrol edin."
+      message: "Özel Google Firebase yapılandırması bulunamadı. Ayarlar ekranından Firebase bilgilerinizi kaydedebilir veya yerel dosya (.ges) yedeği alabilirsiniz."
     };
   }
 
@@ -129,7 +135,7 @@ export async function downloadBackupFromFirebase(): Promise<{ success: boolean; 
   if (!instance) {
     return {
       success: false,
-      message: "Bulut bağlantısı kurulamadı. Lütfen internet bağlantınızı kontrol edin."
+      message: "Özel Google Firebase yapılandırması bulunamadı. Ayarlar ekranından Firebase bilgilerinizi kaydedebilir veya yerel dosya (.ges) yedeği alabilirsiniz."
     };
   }
 

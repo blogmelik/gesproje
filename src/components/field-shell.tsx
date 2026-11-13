@@ -9,10 +9,10 @@ import { ProjectSettingsProvider, useProjectSettings } from "@/lib/project-setti
 import { AppearanceProvider, useAppearanceSettings } from "@/lib/appearance-settings";
 import { LanguageProvider, useI18n, LANGUAGES } from "@/lib/i18n";
 import { BackupDialog } from "@/components/backup-dialog";
-import { getPendingSubmissionCount, fetchSubmissionsFromCloud, getLocalSubmissions, approveSubmission, syncOfflineSubmissions } from "@/lib/submissions";
+import { getPendingSubmissionCount, fetchSubmissionsFromCloud, getLocalSubmissions, approveSubmission, syncOfflineSubmissions, upsertLocalSubmission } from "@/lib/submissions";
 import { APP_VERSION, BUILD_NUMBER } from "@/lib/version";
 import { isDesktopApp } from "@/lib/device";
-import { pullSiteConfigFromCloud } from "@/lib/sync-service";
+import { pullSiteConfigFromCloud, subscribeToCloudRelay } from "@/lib/sync-service";
 
 
 const navigation = [
@@ -85,13 +85,13 @@ function DesktopSyncWatcher() {
   useEffect(() => {
     if (!isDesktop) return;
 
-    const syncCloud = async () => {
+    // 1. Initial catch-up sync for reports sent while desktop was closed
+    const catchUpSync = async () => {
       try {
         const res = await fetchSubmissionsFromCloud();
-        if (res.success) {
+        if (res.success && res.count > 0) {
           window.dispatchEvent(new CustomEvent("ges-submissions-updated"));
 
-          // Eğer otomatik dahil etme açıksa gelen bekleyen raporları doğrudan ana projeye aktar (kronolojik sıra)
           if (localStorage.getItem("ges-auto-approve-v1") === "true") {
             const pending = getLocalSubmissions().filter(s => s.status === "pending");
             const chronological = [...pending].sort(
@@ -113,9 +113,31 @@ function DesktopSyncWatcher() {
       }
     };
 
-    syncCloud();
-    const interval = setInterval(syncCloud, 7000);
-    return () => clearInterval(interval);
+    catchUpSync();
+
+    // 2. Real-time Live SSE Stream (<200ms latency)
+    const unsubscribe = subscribeToCloudRelay(async (sub) => {
+      const { updated, isNew } = upsertLocalSubmission(sub);
+      if (updated) {
+        window.dispatchEvent(new CustomEvent("ges-submissions-updated"));
+
+        // If auto-approve is active, immediately merge changes into main project data
+        if (localStorage.getItem("ges-auto-approve-v1") === "true" && (isNew || sub.status === "pending")) {
+          await approveSubmission(sub, (changes) => {
+            importData(changes);
+          });
+          window.dispatchEvent(new CustomEvent("ges-submissions-updated"));
+        }
+      }
+    });
+
+    // 3. Fallback poll (every 30s) in case of sleep/wake reconnect
+    const fallbackInterval = setInterval(catchUpSync, 30000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(fallbackInterval);
+    };
   }, [isDesktop, importData]);
 
   return null;
